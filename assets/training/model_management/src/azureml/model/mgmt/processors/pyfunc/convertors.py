@@ -309,7 +309,7 @@ class BLIP2MLFlowConvertor(PyFuncMLFLowConvertor):
     def __init__(self, **kwargs):
         """Initialize MLflow convertor for BLIP2 models."""
         super().__init__(**kwargs)
-        if self._task != (SupportedTasks.IMAGE_TO_TEXT.value):
+        if self._task not in [SupportedTasks.IMAGE_TO_TEXT.value, SupportedTasks.VISUAL_QUESTION_ANSWERING.value]:
             raise Exception("Unsupported task")
 
     def get_model_signature(self) -> ModelSignature:
@@ -318,12 +318,25 @@ class BLIP2MLFlowConvertor(PyFuncMLFLowConvertor):
         :return: MLflow model signature.
         :rtype: mlflow.models.signature.ModelSignature
         """
-        input_schema = Schema(
-            [
-                ColSpec(BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE_DATA_TYPE,
-                        BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE),
-            ]
-        )
+        if self._task == SupportedTasks.IMAGE_TO_TEXT.value:
+            input_schema = Schema(
+                [
+                    ColSpec(BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE_DATA_TYPE,
+                            BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE),
+                ]
+            )
+        elif self._task == SupportedTasks.VISUAL_QUESTION_ANSWERING.value:
+            input_schema = Schema(
+                [
+                    ColSpec(BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE_DATA_TYPE,
+                            BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_IMAGE),
+                    ColSpec(BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_TEXT_DATA_TYPE,
+                            BLIP2MLFlowSchemaLiterals.INPUT_COLUMN_TEXT),
+                ]
+            )
+        else:
+            raise Exception("Unsupported task")
+
         output_schema = Schema(
             [
                 ColSpec(BLIP2MLFlowSchemaLiterals.OUTPUT_COLUMN_DATA_TYPE,

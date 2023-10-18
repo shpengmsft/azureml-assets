@@ -18,6 +18,7 @@ class Tasks(_CustomEnum):
     """Tasks supported."""
 
     IMAGE_TO_TEXT = "image-to-text"
+    VISUAL_QUESTION_ANSWERING = "visual-question-answering"
 
 
 class MLflowSchemaLiterals:
@@ -25,6 +26,8 @@ class MLflowSchemaLiterals:
 
     INPUT_COLUMN_IMAGE_DATA_TYPE = DataType.binary
     INPUT_COLUMN_IMAGE = "image"
+    INPUT_COLUMN_TEXT_DATA_TYPE = DataType.string
+    INPUT_COLUMN_TEXT = "text"
     OUTPUT_COLUMN_DATA_TYPE = DataType.string
     OUTPUT_COLUMN_TEXT = "text"
 

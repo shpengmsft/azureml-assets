@@ -44,7 +44,7 @@ class BLIP2MLFlowModelWrapper(mlflow.pyfunc.PythonModel):
         :param context: MLflow context containing artifacts that the model can use for inference
         :type context: mlflow.pyfunc.PythonModelContext
         """
-        if self._task_type == (Tasks.IMAGE_TO_TEXT.value):
+        if self._task_type in [Tasks.IMAGE_TO_TEXT.value, Tasks.VISUAL_QUESTION_ANSWERING.value]:
             try:
                 model_dir = context.artifacts[MLflowLiterals.MODEL_DIR]
                 self._processor = AutoProcessor.from_pretrained(model_dir)
@@ -84,9 +84,17 @@ class BLIP2MLFlowModelWrapper(mlflow.pyfunc.PythonModel):
                 .tolist()
             )
 
-            generated_text_list = self.run_inference_batch(
-                image_path_list=image_path_list,
-            )
+            if self._task_type == Tasks.IMAGE_TO_TEXT.value:
+                generated_text_list = self.run_inference_batch(
+                    image_path_list=image_path_list,
+                )
+            elif self._task_type == Tasks.VISUAL_QUESTION_ANSWERING.value:
+                generated_text_list = self.run_inference_batch(
+                    image_path_list=image_path_list,
+                    question_list=input_data["text"].tolist()
+                )
+            else:
+                ValueError(f"invalid task type {self._task_type}")
 
         df_result = pd.DataFrame(
             columns=[
@@ -100,19 +108,26 @@ class BLIP2MLFlowModelWrapper(mlflow.pyfunc.PythonModel):
 
     def run_inference_batch(
         self,
-        image_path_list: List
+        image_path_list: List,
+        question_list: List = None
     ) -> List[str]:
         """Perform inference on batch of input images.
 
-        :param image_path_list: list of image paths for inferencing.
+        :param image_path_list: List of image paths for inferencing.
         :type image_path_list: List
+        :param question_list: List of questions for VQA inferencing. It's used only in case of vqa task.
+        :type question_list: List
         :return: List of generated texts
         :rtype: List of strings
         """
         image_list = [Image.open(img_path) for img_path in image_path_list]
 
-        inputs = self._processor(images=image_list,
-                                 return_tensors="pt").to(self._device)
+        if self._task_type == Tasks.IMAGE_TO_TEXT.value:
+            inputs = self._processor(images=image_list,
+                                     return_tensors="pt").to(self._device)
+        elif self._task_type == Tasks.VISUAL_QUESTION_ANSWERING.value:
+            inputs = self._processor(images=image_list, text=question_list,
+                                     return_tensors="pt").to(self._device)
         generated_ids = self._model.generate(**inputs)
         generated_text_list = self._processor.batch_decode(generated_ids, skip_special_tokens=True)
 
