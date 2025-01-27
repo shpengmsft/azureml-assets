@@ -5,9 +5,9 @@
 
 
 import pyspark.sql as pyspark_sql
-from shared_utilities.df_utils import get_numerical_columns
+from shared_utilities.df_utils import get_numerical_cols_with_df_with_override
 from shared_utilities.histogram_utils import get_dual_histogram_bin_edges
-from shared_utilities.df_utils import get_common_columns
+from shared_utilities.df_utils import try_get_common_columns_with_error
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -18,13 +18,18 @@ from shared_utilities.io_utils import init_spark
 
 
 def compute_numerical_bins(
-    df1: pyspark_sql.DataFrame, df2: pyspark_sql.DataFrame
+    df1: pyspark_sql.DataFrame,
+    df2: pyspark_sql.DataFrame,
+    override_numerical_features: list,
+    override_categorical_features: list
 ) -> tuple:
     """Compute numerical bins given two data frames."""
     # Generate histograms only for columns in both baseline and target dataset
-    common_columns_dict = get_common_columns(df1, df2)
-    numerical_columns = get_numerical_columns(common_columns_dict)
-
+    common_columns_dict = try_get_common_columns_with_error(df2, df1)
+    numerical_columns = get_numerical_cols_with_df_with_override(df1,
+                                                                 override_numerical_features,
+                                                                 override_categorical_features,
+                                                                 common_columns_dict)
     # Numerical column histogram generation
     baseline_count = df1.count()
     production_count = df2.count()
@@ -32,14 +37,17 @@ def compute_numerical_bins(
     bin_edges = get_dual_histogram_bin_edges(
         df1, df2, baseline_count, production_count, numerical_columns
     )
-
     return bin_edges
 
 
 def compute_histogram_buckets(
-    df1: pyspark_sql.DataFrame, df2: pyspark_sql.DataFrame
+    df1: pyspark_sql.DataFrame,
+    df2: pyspark_sql.DataFrame,
+    override_numerical_features: list,
+    override_categorical_features: list
 ) -> pyspark_sql.DataFrame:
     """Compute histogram buckets."""
+    print("compute numerical bins")
     # Generate histograms only for columns in both baseline and target dataset
     spark = init_spark()
     schema = StructType(
@@ -49,18 +57,19 @@ def compute_histogram_buckets(
             StructField("bucket", DoubleType(), True),
         ]
     )
-    bin_edges = compute_numerical_bins(df1, df2)
+    bin_edges = compute_numerical_bins(df1, df2, override_numerical_features, override_categorical_features)
 
-    print(bin_edges)
+    print(f"bin edges: {bin_edges}")
     data = []
     for feature in bin_edges:
         print(bin_edges[feature])
         for i in range(len(bin_edges[feature])):
+            print(type(bin_edges[feature][i]))
             data.append(
                 {
                     "feature_name": feature,
                     "data_type": "Numerical",
-                    "bucket": bin_edges[feature][i],
+                    "bucket": float(bin_edges[feature][i]),
                 }
             )
     return spark.createDataFrame(data=data, schema=schema)

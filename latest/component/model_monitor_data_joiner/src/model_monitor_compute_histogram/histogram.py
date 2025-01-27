@@ -17,7 +17,7 @@ from shared_utilities.constants import (
     CATEGORICAL_FEATURE_CATEGORY,
     NUMERICAL_FEATURE_CATEGORY,
 )
-from shared_utilities.df_utils import get_categorical_columns, get_numerical_columns
+from shared_utilities.df_utils import get_numerical_and_categorical_cols
 from shared_utilities.histogram_utils import get_histograms
 from shared_utilities.io_utils import init_spark
 
@@ -130,26 +130,26 @@ def _to_bin_edges(histogram_buckets: pyspark_sql.DataFrame):
 
 
 def compute_histograms(
-    df: pyspark_sql.DataFrame, histogram_buckets: pyspark_sql.DataFrame
-) -> tuple:
+        df: pyspark_sql.DataFrame,
+        histogram_buckets: pyspark_sql.DataFrame,
+        override_numerical_features: str,
+        override_categorical_features: str) -> tuple:
     """Compute data drift measures and perform tests."""
     # Generate histograms only for columns in both baseline and target dataset
-    columns_dict = {}
-    df_dtypes = dict(df.dtypes)
-    for (column_name, data_type) in df_dtypes.items():
-        columns_dict[column_name] = data_type
-
-    numerical_columns = get_numerical_columns(columns_dict)
-    categorical_columns = get_categorical_columns(columns_dict)
+    numerical_columns, categorical_columns = get_numerical_and_categorical_cols(df,
+                                                                                override_numerical_features,
+                                                                                override_categorical_features)
 
     # Numerical column histogram generation
 
     bin_edges = _to_bin_edges(histogram_buckets)
     histogram_dict = get_histograms(df, bin_edges, numerical_columns)
 
-    numerical_histogram_rows = generate_numerical_histogram_rows(histogram_dict)
+    numerical_histogram_rows = generate_numerical_histogram_rows(
+        histogram_dict)
 
-    baseline_numerical_histogram_df = create_histogram_df(numerical_histogram_rows)
+    baseline_numerical_histogram_df = create_histogram_df(
+        numerical_histogram_rows)
 
     # Categorical column histogram generation
     categorical_histogram_rows = generate_categorical_histogram_rows(
@@ -158,7 +158,9 @@ def compute_histograms(
 
     categorical_histogram_df = create_histogram_df(categorical_histogram_rows)
 
-    # Generate baseline and production histogram with numerical and categorical columns
-    histogram_df = baseline_numerical_histogram_df.union(categorical_histogram_df)
+    # Generate baseline and production histogram with numerical and
+    # categorical columns
+    histogram_df = baseline_numerical_histogram_df.union(
+        categorical_histogram_df)
 
     return histogram_df

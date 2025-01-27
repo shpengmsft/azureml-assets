@@ -1,13 +1,13 @@
-# **Microsoft Phi-1.5**
+## **Microsoft Phi-1.5**
 
 Phi-1.5 is a Transformer-based language model with 1.3 billion parameters. It was trained on a combination of data sources, including an additional source of NLP synthetic texts. Phi-1.5 performs exceptionally well on benchmarks testing common sense, language understanding, and logical reasoning among models with less than 10 billion parameters. The model is open-source and intended for research purposes to explore safety challenges in language models.
 
-## Intended Uses
+### Intended Uses
 
 Phi-1.5 is best suited for prompts using the QA format, the chat format, and the code format. 
 Note: that phi-1.5, being a base model, often produces irrelevant text following the main answer
 
-## Limitations
+### Limitations
 
 * Generate Inaccurate Code and Facts: The model often produces incorrect code snippets and statements. Users should treat these outputs as suggestions or starting points, not as definitive or accurate solutions.
 * Limited Scope for code: If the model generates Python scripts that utilize uncommon packages or scripts in other languages, we strongly recommend users manually verify all API uses.
@@ -25,11 +25,9 @@ Note: that phi-1.5, being a base model, often produces irrelevant text following
 
 The model is licensed under the <a href="https://huggingface.co/microsoft/phi-1_5/resolve/main/Research%20License.docx" target="_blank">Research License</a>.
 
-# Inference samples
+### Sample inputs and outputs (for real-time inference)
 
-## Sample inputs and outputs (for real-time inference)
-
-### Sample Question-Answering input
+#### Sample Question-Answering input
 ```json
 {
   "input_data": {
@@ -39,23 +37,23 @@ The model is licensed under the <a href="https://huggingface.co/microsoft/phi-1_
     "parameters": {
       "top_p": 0.9,
       "temperature": 0.6,
-      "max_new_tokens": 100,
+      "max_new_tokens": 200,
       "do_sample": true
     }
   }
 }
 ```
 
-### Sample output
+#### Sample output
 ```json
 {
   "output": [
-    "What is a fermi paradox?\nAnswer: The fermi paradox is the question of why, if we know that there are infinitely many universes with different physical laws, why haven't we found a way to travel between them and explore them.\n\nExercise 2:\nWhat is a black hole?\nAnswer: A black hole is an object in space with such strong gravity that nothing can escape, not even light.\n\nExercise 3:\nWhat is the difference between a black hole and a wormhole?"
+    "What is a fermi paradox? A fermi paradox is a question that asks why there are no signs of intelligent life outside of Earth. If there is life out there, why haven't we heard from them? What is the Drake equation? The Drake equation is a way to estimate the number of civilizations in our galaxy that could communicate with us. It takes into account factors like the number of stars, the number of planets that could support life, and the likelihood of life evolving to the point of developing technology. What is the Fermi paradox? The Fermi paradox is a question that asks why there are no signs of intelligent life outside of Earth. If there is life out there, why haven't we heard from them? What is the Drake equation? The Drake equation is a way to estimate the number of civilizations in our galaxy that could communicate with us. It takes into account factors like the number of stars, the number of planets that could"
   ]
 }
 ```
 
-### Sample Chat input
+#### Sample Chat input
 ```json
 {
   "input_data": {
@@ -72,17 +70,17 @@ The model is licensed under the <a href="https://huggingface.co/microsoft/phi-1_
 }
 ```
 
-### Sample output
+#### Sample output
 ```json
 {
   "output": [
-    "Alice: What is a fermi paradox?\n\nBob: It's a question about why the number of fermions and bosons in the universe is roughly equal.\n\nAlice: Oh, I see. So, why are there more fermions than bosons?\n\nBob: Well, there are a few reasons. One is that fermions are more abundant in nature, and they have a greater affinity for each other. Another reason is that fermions can form more stable structures than bosons, pregnancies,"
+    "Alice: What is a fermi paradox? Bob: It's a paradox in cosmology that asks why we haven't encountered extraterrestrial civilizations yet, given the vastness of the universe and the potential for life. Alice: That's a tough one. I guess it could be because we haven't found any yet, or because they're too far away to detect. Bob: Yeah, there are a lot of different theories about it. But one thing's for sure, the universe is full of mysteries that we"
   ]
 }
 ```
 
 
-### Sample Code input
+#### Sample Code input
 ```json
 {
   "input_data": {
@@ -99,11 +97,11 @@ The model is licensed under the <a href="https://huggingface.co/microsoft/phi-1_
 }
 ```
 
-### Sample output
+#### Sample output
 ```json
 {
   "output": [
-    "def is_prime(n: int) -> bool:\n        if n < 2:\n            return False\n        for i in range(2, int(math.sqrt(n)) + 1):\n            if n % i == 0:\n                return False\n        return True\n\n    def is_triangular(n: int) -> bool:\n        return is_prime(n * (n + 1) // 2)\n\n    triangular_numbers = [i * ("
+    "def is_prime(n: int) -> bool: if n < 2: return False for i in range(2, int(math.sqrt(n))+1): if n % i == 0: return False return True def get_next_prime(n: int) -> int: while not is_prime(n): n += 1 return n def get_next_multiple_"
   ]
 }
 ```

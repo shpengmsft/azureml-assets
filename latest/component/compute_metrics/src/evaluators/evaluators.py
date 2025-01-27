@@ -4,8 +4,14 @@
 """Evaluator."""
 
 import ast
+import os
+import re
+import shutil
+import tempfile
+
 import pandas as pd
 import numpy as np
+
 from abc import abstractmethod
 
 from exceptions import (
@@ -18,14 +24,24 @@ from error_definitions import (
 )
 # TODO: Import ForecastColumns from azureml.evaluate.mlflow, when it will be
 # available.
-from constants import TASK, ForecastingConfigContract, ForecastColumns, TextGenerationColumns, DataFrameParams, SubTask
+from constants import (
+    TASK,
+    ForecastingConfigContract,
+    TextGenerationColumns,
+    DataFrameParams,
+    OpenAIConstants,
+    SubTask,
+    ChatCompletionConstants
+)
 from image_constants import ImageDataFrameParams, ODISLiterals
+from azureml.core import Run
+from azureml.data.datapath import DataPath
+from azureml.data.dataset_factory import FileDatasetFactory
 from azureml.evaluate.mlflow.models.evaluation.azureml._image_od_is_evaluator import (
     ImageOdIsEvaluator,
 )
-from azureml._common._error_definition.azureml_error import AzureMLError
 from azureml.metrics import compute_metrics, constants
-from logging_utilities import get_logger, log_traceback
+from logging_utilities import get_logger, log_traceback, get_azureml_exception
 
 logger = get_logger(name=__name__)
 
@@ -48,6 +64,7 @@ class EvaluatorFactory:
             TASK.TRANSLATION: TranslationEvaluator,
             TASK.SUMMARIZATION: SummarizationEvaluator,
             TASK.QnA: QnAEvaluator,
+            # TASK.QnA_MULTIPLE_GROUND_TRUTH: QnAMultipleGroundTruthEvaluator,
             TASK.FILL_MASK: FillMaskEvaluator,
             TASK.TEXT_GENERATION: TextGenerationEvaluator,
             TASK.CHAT_COMPLETION: ChatCompletionEvaluator,
@@ -55,22 +72,25 @@ class EvaluatorFactory:
             TASK.IMAGE_CLASSIFICATION: ClassifierEvaluator,
             TASK.IMAGE_CLASSIFICATION_MULTILABEL: ClassifierMultilabelEvaluator,
             TASK.IMAGE_OBJECT_DETECTION: ImageObjectDetectionInstanceSegmentationEvaluator,
-            TASK.IMAGE_INSTANCE_SEGMENTATION: ImageObjectDetectionInstanceSegmentationEvaluator
+            TASK.IMAGE_INSTANCE_SEGMENTATION: ImageObjectDetectionInstanceSegmentationEvaluator,
+            TASK.IMAGE_GENERATION: ImageGenerationEvaluator,
         }
 
-    def get_evaluator(self, task_type, metrics_config=None):
+    def get_evaluator(self, task_type, config=None):
         """Get evaluator.
 
         Args:
             task_type (_type_): _description_
-            metrics_config (_type_, optional): _description_. Defaults to None.
+            config (_type_, optional): _description_. Defaults to None.
 
         Returns:
             _type_: _description_
         """
-        if metrics_config.get(TextGenerationColumns.SUBTASKKEY, "") == SubTask.CODEGENERATION:
-            return CodeGenerationEvaluator(task_type, metrics_config)
-        return self._evaluators[task_type](task_type, metrics_config)
+        if config.get(TextGenerationColumns.SUBTASKKEY, "") == SubTask.CODEGENERATION:
+            return CodeGenerationEvaluator(task_type, config)
+        if task_type == TASK.CHAT_COMPLETION and config.get(SubTask.SUB_TASK_KEY, "") == SubTask.RAG_EVALUATION:
+            return RagEvaluator(task_type, config)
+        return self._evaluators[task_type](task_type, config)
 
     def register(self, name, obj):
         """Register evaluator.
@@ -376,7 +396,7 @@ class QnAEvaluator(Evaluator):
         """
         super().__init__(task_type, metrics_config)
 
-    def evaluate(self, y_test, y_pred, **kwargs):
+    def evaluate(self, y_test, y_pred, is_multiple_ground_truth, **kwargs):
         """Evaluate QnA.
 
         Args:
@@ -389,17 +409,14 @@ class QnAEvaluator(Evaluator):
         y_pred = self._convert_predictions(y_pred).tolist()
         y_test = self._convert_predictions(y_test).tolist()
 
-        # y_pred = []
-        # for pred in y_pred:
-        #     if (isinstance(pred, list) or isinstance(pred, np.ndarray)):
-        #         if len(pred) >= 1:
-        #             y_pred.append(pred[0])
-        #     else:
-        #         y_pred.append(pred)
-        # logger.warning("Multiple ground truths are not supported for question-answering task currently.\
-        #                 Considering only the first ground truth in case of multiple values.")
-        metrics = compute_metrics(task_type=constants.Tasks.QUESTION_ANSWERING, y_test=y_test,
-                                  y_pred=y_pred, **self.metrics_config)
+        if is_multiple_ground_truth:
+            logger.info("Computing metrics for QnA task with multiple ground truth.")
+            metrics = compute_metrics(task_type=constants.Tasks.QUESTION_ANSWERING_MULTIPLE_GROUND_TRUTH,
+                                      y_test=y_test, y_pred=y_pred, **self.metrics_config)
+        else:
+            logger.info("Computing metrics for QnA task.")
+            metrics = compute_metrics(task_type=constants.Tasks.QUESTION_ANSWERING, y_test=y_test,
+                                      y_pred=y_pred, **self.metrics_config)
         return metrics
 
 
@@ -538,9 +555,7 @@ class CodeGenerationEvaluator(Evaluator):
         y_test_col_name = kwargs.get(DataFrameParams.Ground_Truth_Column_Name, None)
         # TodO: This validaion should ideally be done while data loading. Design needs to be reconsidered
         if extra_cols is None and y_test_col_name is None:
-            exception = DataValidationException._with_error(
-                AzureMLError.create(InvalidGroundTruthColumnNameCodeGen)
-            )
+            exception = get_azureml_exception(DataValidationException, InvalidGroundTruthColumnNameCodeGen, None)
             log_traceback(exception, logger)
             raise exception
         y_test_case_col_name = extra_cols[0] if extra_cols is not None and len(extra_cols) > 0 else None
@@ -548,9 +563,7 @@ class CodeGenerationEvaluator(Evaluator):
             if y_test_case_col_name in y_test.columns:
                 y_test_cases = y_test[[y_test_case_col_name]]
             else:
-                exception = DataValidationException._with_error(
-                    AzureMLError.create(InvalidYTestCasesColumnNameData)
-                )
+                exception = get_azureml_exception(DataValidationException, InvalidYTestCasesColumnNameData, None)
                 log_traceback(exception, logger)
                 raise exception
 
@@ -558,9 +571,7 @@ class CodeGenerationEvaluator(Evaluator):
             if y_test_col_name in y_test.columns:
                 y_test = y_test[[y_test_col_name]]
             else:
-                exception = DataValidationException._with_error(
-                    AzureMLError.create(InvalidGroundTruthColumnNameData)
-                )
+                exception = get_azureml_exception(DataValidationException, InvalidGroundTruthColumnNameData, None)
                 log_traceback(exception, logger)
                 raise exception
         else:
@@ -607,9 +618,86 @@ class ChatCompletionEvaluator(Evaluator):
         Returns:
             _type_: _description_
         """
-        y_pred_formatted = y_pred.iloc[:, 0].apply(lambda x: [item['input_string'] for item in x])
-        metrics = compute_metrics(task_type=constants.Tasks.CHAT_COMPLETION, y_pred=y_pred_formatted.tolist(),
-                                  **self.metrics_config)
+        #  dataframe with 2 columns predictions and predictions appended to the conversation
+        if len(y_pred.columns) > 1:
+            logger.info("Found more than 1 col. Trying to fetch conversation.")
+
+            def check_item(row_item: pd.Series):
+                """Convert input data to correct format for metrics package.
+
+                Args:
+                    row_item (pd.Series): Single row input from Dataframe
+                """
+                item = row_item.get(ChatCompletionConstants.OUTPUT_FULL_CONVERSATION, None)
+                if item is None:
+                    return row_item
+                if isinstance(item, list) and isinstance(item[0], dict):
+                    if item[0].get("role", False) and item[0].get("content", False):
+                        return item
+                    else:
+                        if item[0].get("0", False):
+                            return item["0"]
+                return item
+
+            y_pred_formatted = y_pred.apply(check_item, axis=1).tolist()
+        # dataframe wih just predictions appended to conversations
+        else:
+            y_pred_formatted = y_pred.values.tolist()
+        # if ground truth is passed
+        if y_test is not None and len(y_test) > 0:
+
+            def check_y_test(row_item: pd.Series):
+                """Convert ground truth into correct format for metrics package.
+
+                Args:
+                    row_item (pd.Series): Single row input from Dataframe
+                """
+                item = row_item.get(y_test.columns[0])
+                if isinstance(item, str) or isinstance(item, dict):
+                    return [item]
+                if isinstance(item, list):
+                    return item
+
+            y_test = y_test.apply(check_y_test, axis=1).tolist()
+            metrics = compute_metrics(task_type=constants.Tasks.CHAT_COMPLETION, y_pred=y_pred_formatted,
+                                      y_test=y_test, **self.metrics_config)
+        else:
+            metrics = compute_metrics(task_type=constants.Tasks.CHAT_COMPLETION, y_pred=y_pred_formatted,
+                                      **self.metrics_config)
+        return metrics
+
+
+class RagEvaluator(Evaluator):
+    """RAG Evaluator.
+
+    Args:
+        Evaluator (_type_): _description_
+    """
+
+    def evaluate(self, y_test, y_pred, **kwargs):
+        """Evaluate Chat Completion.
+
+        Args:
+            y_test (_type_): _description_
+            y_pred (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        self.metrics_config.pop(SubTask.SUB_TASK_KEY)
+
+        y_pred = self._convert_predictions(y_pred).tolist()
+        questions = self.metrics_config.pop(OpenAIConstants.QUESTIONS_KEY)
+        contexts = self.metrics_config.pop(OpenAIConstants.CONTEXTS_KEY)
+        y_pred_formatted = []
+        for question, answer, context in zip(questions, y_pred, contexts):
+            pred = [
+                {"role": "user", "content": question},
+                {"role": "assistant", "content": answer, "context": {"citations": context}}
+            ]
+            y_pred_formatted += [pred]
+        metrics = compute_metrics(task_type=constants.Tasks.RAG_EVALUATION,
+                                  y_pred=y_pred_formatted, **self.metrics_config)
         return metrics
 
 
@@ -659,8 +747,8 @@ class ForecastingEvaluator(Evaluator):
             X_test=X_test,
             **kwargs
         )
-        X_test[ForecastColumns._ACTUAL_COLUMN_NAME] = y_test
-        X_test[ForecastColumns._FORECAST_COLUMN_NAME] = y_pred
+        # X_test[ForecastColumns._ACTUAL_COLUMN_NAME] = y_test
+        # X_test[ForecastColumns._FORECAST_COLUMN_NAME] = y_pred
         return metrics
 
 
@@ -727,3 +815,59 @@ class ImageObjectDetectionInstanceSegmentationEvaluator(Evaluator):
                                                      **self.metrics_config)
 
         return metrics
+
+
+class ImageGenerationEvaluator(Evaluator):
+    """Evaluator for image generation."""
+
+    DATASTORE_URL_TEMPLATE = "AmlDatastore://([^/]+)((/[^/]+)+)$"
+
+    def evaluate(self, y_test, y_pred, **kwargs):
+        """Evaluate generated images.
+
+        Compare feature space distribution of real images with that of generated images.
+
+        Args:
+            y_test (pd.DataFrame): pandas DataFrame with column "label", containing real images
+            y_pred (pd.DataFrame): pandas DataFrame with column "predictions", containing generated images
+        Returns:
+            Dict: Dict of metrics
+        """
+        with tempfile.TemporaryDirectory() as ground_truth_folder_name, \
+             tempfile.TemporaryDirectory() as predictions_folder_name:
+            self._download_images(y_test[ImageDataFrameParams.LABEL_COLUMN_NAME], ground_truth_folder_name)
+            self._download_images(y_pred[ImageDataFrameParams.PREDICTIONS], predictions_folder_name)
+
+            metrics = compute_metrics(
+                task_type=constants.Tasks.IMAGE_GENERATION,
+                y_test=ground_truth_folder_name, y_pred=predictions_folder_name,
+                **self.metrics_config
+            )
+        return metrics
+
+    def _download_images(self, image_urls, local_folder_name):
+        # Get the workspace of the run.
+        run = Run.get_context()
+        workspace = run.experiment.workspace
+
+        def maybe_make_data_path(image_url):
+            # Check if this url refers to datastore and if not, keep it as is.
+            match = re.search(self.DATASTORE_URL_TEMPLATE, image_url)
+            if match is None:
+                return image_url
+
+            # Make DataPath from datastore name and file path.
+            groups = match.groups()
+            return DataPath(workspace.datastores.get(groups[0]), groups[1])
+
+        # Convert URLs referring to datastore to DataPath format.
+        image_urls = [maybe_make_data_path(image_url) for image_url in image_urls]
+
+        # Download images to temporary folder.
+        remote_image_files = FileDatasetFactory.from_files(image_urls, is_file=True)
+        local_image_file_names = remote_image_files.download()
+
+        # Move images to specified folder.
+        for i, local_image_file_name in enumerate(local_image_file_names):
+            f = os.path.splitext(local_image_file_name)[1]
+            shutil.move(local_image_file_name, os.path.join(local_folder_name, f"image_{i:09d}{f}"))

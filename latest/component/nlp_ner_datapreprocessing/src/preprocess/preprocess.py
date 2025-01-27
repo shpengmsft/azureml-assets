@@ -7,7 +7,11 @@ import json
 import argparse
 from pathlib import Path
 from argparse import Namespace
+from typing import Any
+from functools import partial
+import logging
 
+from transformers.trainer_utils import get_last_checkpoint
 
 from azureml.acft.contrib.hf.nlp.task_factory import get_task_runner
 from azureml.acft.contrib.hf.nlp.constants.constants import (
@@ -16,14 +20,13 @@ from azureml.acft.contrib.hf.nlp.constants.constants import (
     HfModelTypes,
     LOGS_TO_BE_FILTERED_IN_APPINSIGHTS,
 )
-from azureml.acft.contrib.hf.nlp.utils.data_utils import copy_and_overwrite
+from azureml.acft.contrib.hf.nlp.utils.data_utils import copy_and_overwrite, clean_column_name
 from azureml.acft.contrib.hf.nlp.nlp_auto.config import AzuremlAutoConfig
 from azureml.acft.contrib.hf.nlp.tasks.translation.preprocess.preprocess_for_finetune import T5_CODE2LANG_MAP
 
-from azureml.acft.common_components.utils.error_handling.exceptions import ACFTValidationException, ACFTSystemException
+from azureml.acft.common_components.utils.error_handling.exceptions import ACFTValidationException
 from azureml.acft.common_components.utils.error_handling.error_definitions import (
     PathNotFound,
-    ACFTSystemError,
     ACFTUserError,
 )
 from azureml.acft.common_components.utils.error_handling.swallow_all_exceptions_decorator import (
@@ -34,7 +37,7 @@ from azureml.acft.contrib.hf import VERSION, PROJECT_NAME
 from azureml._common._error_definition.azureml_error import AzureMLError  # type: ignore
 
 
-logger = get_logger_app(__name__)
+logger = get_logger_app("azureml.acft.contrib.hf.scripts.src.preprocess.preprocess")
 
 COMPONENT_NAME = "ACFT-Preprocess"
 
@@ -50,6 +53,13 @@ def str2bool(arg):
         raise ValueError(f"Invalid argument {arg} to while converting string to boolean")
 
 
+def default_missing_path(arg_str: str, default: Any = None):
+    """If path of the arg is missing, reset the value to default. Use this type with paths."""
+    if isinstance(arg_str, str) and not Path(arg_str).exists():
+        return default
+    return arg_str
+
+
 def get_parser():
     """
     Add arguments and returns the parser. Here we add all the arguments for all the tasks.
@@ -58,23 +68,29 @@ def get_parser():
     """
     parser = argparse.ArgumentParser(description="Model Preprocessing", allow_abbrev=False)
 
+    # NOTE that the default is present in both :param `type` and `default`. In case of change, we need to update
+    # in both places
     parser.add_argument(
         "--train_file_path",
-        type=str,
+        type=partial(default_missing_path, default=None),
         required=False,
         default=None,
         help="Train data path",
     )
+    # NOTE that the default is present in both :param `type` and `default`. In case of change, we need to update
+    # in both places
     parser.add_argument(
         "--validation_file_path",
-        type=str,
+        type=partial(default_missing_path, default=None),
         required=False,
         default=None,
         help="Validation data path",
     )
+    # NOTE that the default is present in both :param `type` and `default`. In case of change, we need to update
+    # in both places
     parser.add_argument(
         "--test_file_path",
-        type=str,
+        type=partial(default_missing_path, default=None),
         required=False,
         default=None,
         help="Test data path",
@@ -135,6 +151,7 @@ def get_parser():
         default="SingleLabelClassification",
         help="Task Name",
     )
+    parser.add_argument("--num_train_epochs", default=1, type=int, help="training epochs")
 
     # NLP settings
     parser.add_argument(
@@ -166,6 +183,10 @@ def pre_process(parsed_args: Namespace, unparsed_args: list):
         model_name_or_path = Path(parsed_args.model_selector_output, parsed_args.model_name)
         # Transformers lib searches for tokenizer files locally only if the folder path is same as model's name
         if model_name_or_path.is_dir():
+            last_checkpoint = get_last_checkpoint(model_name_or_path)
+            if last_checkpoint:
+                model_name_or_path = last_checkpoint
+            logger.info(f"Copying content from {model_name_or_path} to {parsed_args.model_name}")
             copy_and_overwrite(str(model_name_or_path), parsed_args.model_name)
         parsed_args.model_name_or_path = parsed_args.model_name
 
@@ -190,9 +211,9 @@ def pre_process(parsed_args: Namespace, unparsed_args: list):
         model_type, src_lang, tgt_lang = None, None, None
         try:
             src_lang_idx = unparsed_args.index("--source_lang")
-            src_lang = unparsed_args[src_lang_idx + 1]
+            src_lang = clean_column_name(unparsed_args[src_lang_idx + 1])
             tgt_lang_idx = unparsed_args.index("--target_lang")
-            tgt_lang = unparsed_args[tgt_lang_idx + 1]
+            tgt_lang = clean_column_name(unparsed_args[tgt_lang_idx + 1])
             # fetching model_name as path is already updated above to model_name
             model_type = AzuremlAutoConfig.get_model_type(hf_model_name_or_path=parsed_args.model_name)
         except Exception as e:
@@ -201,7 +222,7 @@ def pre_process(parsed_args: Namespace, unparsed_args: list):
         if model_type == HfModelTypes.T5 and \
                 (src_lang not in T5_CODE2LANG_MAP or tgt_lang not in T5_CODE2LANG_MAP):
             raise ACFTValidationException._with_error(
-                AzureMLError.create(ACFTUserError, error=(
+                AzureMLError.create(ACFTUserError, pii_safe_message=(
                     "Either source or target language is not supported for T5. Supported languages are "
                     f"{list(T5_CODE2LANG_MAP.keys())}"
                 ))
@@ -220,9 +241,9 @@ def pre_process(parsed_args: Namespace, unparsed_args: list):
 
     # raise errors and warnings
     if not parsed_args.train_data_path:
-        raise ACFTSystemException._with_error(
-            AzureMLError.create(ACFTSystemError, pii_safe_message=(
-                "train_file_path or train_mltable_path need to be passed"
+        raise ACFTValidationException._with_error(
+            AzureMLError.create(ACFTUserError, pii_safe_message=(
+                "train_file_path or train_mltable_path need to be passed."
             ))
         )
     if parsed_args.train_file_path and parsed_args.train_mltable_path:
@@ -288,8 +309,6 @@ def main():
     parser = get_parser()
     # unknown args are the command line strings that could not be parsed by the argparser
     parsed_args, unparsed_args = parser.parse_known_args()
-    logger.info(f"Component Args: {parsed_args}")
-
     set_logging_parameters(
         task_type=parsed_args.task_name,
         acft_custom_dimensions={
@@ -298,8 +317,9 @@ def main():
             LoggingLiterals.COMPONENT_NAME: COMPONENT_NAME
         },
         azureml_pkg_denylist_logging_patterns=LOGS_TO_BE_FILTERED_IN_APPINSIGHTS,
+        log_level=logging.INFO,
     )
-
+    logger.info(f"Component Args: {parsed_args}")
     pre_process(parsed_args, unparsed_args)
 
 

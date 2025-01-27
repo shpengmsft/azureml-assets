@@ -7,14 +7,17 @@ Contains MLFlow pyfunc wrapper for stable diffusion models.
 Has methods to load the model and predict.
 """
 
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline
 import mlflow
 import os
 import pandas as pd
 import torch
 
-from config import MLflowSchemaLiterals, Tasks, MLflowLiterals, BatchConstants, DatatypeLiterals
-from vision_utils import image_to_base64
+from config import (
+    MLflowSchemaLiterals, Tasks, MLflowLiterals,
+    BatchConstants, DatatypeLiterals,
+    SupportedTextToImageModelFamily)
+from vision_utils import image_to_base64, save_image
 
 
 class StableDiffusionMLflowWrapper(mlflow.pyfunc.PythonModel):
@@ -23,16 +26,20 @@ class StableDiffusionMLflowWrapper(mlflow.pyfunc.PythonModel):
     def __init__(
         self,
         task_type: str,
+        model_family: str
     ) -> None:
         """Initialize model parameters for converting Huggingface StableDifusion model to mlflow.
 
         :param task_type: Task type used in training.
         :type task_type: str
+        :param model_family: Model family of the stable diffusion task.
+        :type model_family: str
         """
         super().__init__()
         self._pipe = None
         self._task_type = task_type
         self.batch_output_folder = None
+        self._model_family = model_family
 
     def load_context(self, context: mlflow.pyfunc.PythonModelContext) -> None:
         """
@@ -49,7 +56,16 @@ class StableDiffusionMLflowWrapper(mlflow.pyfunc.PythonModel):
             try:
                 _map_location = "cuda" if torch.cuda.is_available() else "cpu"
                 model_dir = context.artifacts[MLflowLiterals.MODEL_DIR]
-                self._pipe = StableDiffusionPipeline.from_pretrained(model_dir)
+                if self._model_family == SupportedTextToImageModelFamily.DECI_DIFFUSION.value:
+                    self._pipe = StableDiffusionPipeline.from_pretrained(model_dir, custom_pipeline=model_dir)
+                    self._pipe.unet = self._pipe.unet.from_pretrained(model_dir, subfolder='flexible_unet')
+                elif self._model_family == SupportedTextToImageModelFamily.STABLE_DIFFUSION_XL.value:
+                    self._pipe = StableDiffusionXLPipeline.from_pretrained(model_dir,
+                                                                           torch_dtype=torch.float16,
+                                                                           variant="fp16")
+                else:
+                    self._pipe = StableDiffusionPipeline.from_pretrained(model_dir)
+
                 self._pipe.to(_map_location)
                 print("Model loaded successfully")
             except Exception as e:
@@ -75,17 +91,53 @@ class StableDiffusionMLflowWrapper(mlflow.pyfunc.PythonModel):
         :rtype: pd.DataFrame
         """
         text_prompts = input_data[MLflowSchemaLiterals.INPUT_COLUMN_PROMPT].tolist()
-
+        if self.batch_output_folder:
+            # Batch endpoint
+            return self.predict_batch(text_prompts)
         output = self._pipe(text_prompts)
         generated_images = []
         for img in output.images:
             generated_images.append(image_to_base64(img, format=DatatypeLiterals.IMAGE_FORMAT))
 
+        nsfw_content = None
+        if hasattr(output, MLflowSchemaLiterals.OUTPUT_COLUMN_NSFW_FLAG):
+            nsfw_content = output.nsfw_content_detected
+
         df = pd.DataFrame(
             {
                 MLflowSchemaLiterals.INPUT_COLUMN_PROMPT: text_prompts,
                 MLflowSchemaLiterals.OUTPUT_COLUMN_IMAGE: generated_images,
-                MLflowSchemaLiterals.OUTPUT_COLUMN_NSFW_FLAG: output.nsfw_content_detected,
+                MLflowSchemaLiterals.OUTPUT_COLUMN_NSFW_FLAG: nsfw_content,
+            }
+        )
+
+        return df
+
+    def predict_batch(self, text_prompts):
+        """
+        Perform batch inference on the input data.
+
+        :param text_prompts: A list of text prompts for which we need to generate images.
+        :type text_prompts: list
+        :return: Pandas dataframe having generated images and NSFW flag. Images in form of base64 string.
+        :rtype: pandas.DataFrame
+        """
+        generated_images = []
+        nsfw_content_detected = []
+        for text_prompt in text_prompts:
+            output = self._pipe(text_prompt)
+            img = output.images[0]
+            nsfw_content = None
+            if hasattr(output, MLflowSchemaLiterals.OUTPUT_COLUMN_NSFW_FLAG):
+                nsfw_content = output.nsfw_content_detected[0]
+            generated_images.append(save_image(self.batch_output_folder, img, DatatypeLiterals.IMAGE_FORMAT))
+            nsfw_content_detected.append(nsfw_content)
+
+        df = pd.DataFrame(
+            {
+                MLflowSchemaLiterals.INPUT_COLUMN_PROMPT: text_prompts,
+                MLflowSchemaLiterals.OUTPUT_COLUMN_IMAGE: generated_images,
+                MLflowSchemaLiterals.OUTPUT_COLUMN_NSFW_FLAG: nsfw_content_detected,
             }
         )
 

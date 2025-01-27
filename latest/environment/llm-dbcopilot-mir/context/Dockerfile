@@ -1,40 +1,51 @@
-FROM mcr.microsoft.com/azureml/minimal-ubuntu22.04-py39-cpu-inference:latest
+FROM mcr.microsoft.com/azureml/minimal-ubuntu22.04-py39-cpu-inference:20250122.v1
 WORKDIR /
 
 USER root
 
-RUN NGINX_CONF=/etc/nginx/sites-enabled/app; sed -i "$(grep "location /" $NGINX_CONF -n | cut -f1 -d:) a proxy_buffering off;" $NGINX_CONF;
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl unixodbc gnupg2 python3.10 \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc \
+    && curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | tee /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18=18.3.3.1-1 \
+    python3.10-minimal \
+    python3.10 \
+    libpython3.10-minimal \
+    libpython3.10-stdlib  \
+    curl \
+    libcurl4  \
+    libexpat1  \
+    expat  \
+    libapparmor1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install vim
-RUN apt-get update && apt-get clean && apt install -y curl && apt-get install -y unixodbc
-# Install ODBC
-# adding custom MS repository
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc
+# NGINX configuration
+RUN NGINX_CONF=/etc/nginx/sites-enabled/app; \
+    sed -i "$(grep "location /" $NGINX_CONF -n | cut -f1 -d:) a proxy_buffering off;" $NGINX_CONF
 
-RUN curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | tee /etc/apt/sources.list.d/mssql-release.list
-
-# install SQL Server drivers
-# install SQL Server tools
-RUN apt-get update
-RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18
-
-# remove because promptflow need root
-# USER dockeruser
-RUN python -m pip install --upgrade pip
-RUN pip install azureml-rag azureml-contrib-services azure-cosmos
-
+# Set environment variables
+ENV BUILD_INFO='{"build_number": "0.0.1"}'
+# Copy the environment file
 COPY ./requirements.txt ./
-RUN pip install -r requirements.txt
 
-COPY ./extra_requirements.txt ./
-RUN pip install -r extra_requirements.txt
+# dbcopilot environment
+RUN python -m pip install --upgrade pip && \
+    # Install necessary tools
+    pip install -r requirements.txt && \
+    # Install promptflow environment
+    pip install promptflow-python-bundle[azure]==0.3.0 && \
+    pip install promptflow-vectordb==0.2.13 langchain-community==0.2.16 && \
+    ## Install dbcopilot
+    pip install db-copilot-tool==0.0.8 &&\
+    pip install setuptools==70.0.0 grpcio==1.56.2
 
-## Install dbcopilot
-RUN pip install https://ragsample.blob.core.windows.net/ragdata/wheels/dbcopilot/db_copilot_tool-0.1.9-py3-none-any.whl
-
-RUN pip install cryptography==41.0.4 langchain==0.0.236
-
-# RUN pip install plotly~=5.13.1 azure-kusto-data==4.2.0 recognizers-text-suite~=1.0.2a2
+# Fix vunerabilities
+RUN /bin/bash -c "source /opt/miniconda/etc/profile.d/conda.sh && \
+    conda activate /opt/miniconda/envs/amlenv && \
+    pip install sqlparse==0.5.0 gunicorn==22.0.0 Werkzeug==3.0.3 azure-identity==1.16.1 certifi==2024.07.04 --upgrade protobuf&& \
+    conda deactivate"
 
 # For GUNICORN_CMD_ARGS, we need to set the timeout to be 0 so that the server will not timeout
 # ENV AML_CORS_ORIGINS="*"

@@ -20,26 +20,14 @@
     }
   },
   "zero_allow_untested_optimizer": true,
-  "optimizer": {
-    "type": "AdamW",
-    "params": {
-      "lr": "auto",
-      "betas": "auto",
-      "eps": "auto",
-      "weight_decay": "auto"
-    }
-  },
-  "scheduler": {
-    "type": "WarmupLR",
-    "params": {
-      "warmup_min_lr": "auto",
-      "warmup_max_lr": "auto",
-      "warmup_num_steps": "auto"
-    }
-  },
   "steps_per_print": 2000,
   "train_batch_size": "auto",
   "train_micro_batch_size_per_gpu": "auto",
   "gradient_accumulation_steps": "auto",
-  "wall_clock_breakdown": false
+  "wall_clock_breakdown": false,
+  "nebula": {
+    "enabled": false,
+    "persistent_time_interval": 30,
+    "num_of_version_in_retention": 2
+  }
 }

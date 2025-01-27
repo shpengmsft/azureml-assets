@@ -2,13 +2,12 @@ $schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 
 tags:
   Preview: ""
-
 description: >-
   An environment for standard Large Language Model Retrieval Augmented Generation
   embedding components.
 
 name: "llm-rag-embeddings"
-version: "25"
+version: "26"
 
 build:
   path: "context"

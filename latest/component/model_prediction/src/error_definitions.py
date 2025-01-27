@@ -6,7 +6,8 @@
 from azureml._common._error_definition import error_decorator
 from azureml._common._error_definition.user_error import (
     BadArgument,
-    BadData
+    BadData,
+    UserError
 )
 from azureml._common._error_definition.system_error import ClientError
 from constants import ErrorStrings
@@ -38,7 +39,33 @@ class ModelPredictionInternalError(ClientError):
         return ErrorStrings.GenericModelPredictionError
 
 
+class ModelPredictionUserError(UserError):
+    """Model Prediction error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.GenericModelPredictionError
+
+
 class ComputeMetricsInternalError(ClientError):
+    """Compute Metrics error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.GenericComputeMetricsError
+
+
+class ComputeMetricsUserError(UserError):
     """Compute Metrics error."""
 
     @property
@@ -94,7 +121,7 @@ class InvalidModel(BadArgument):
 
 
 @error_decorator(use_parent_error_code=True)
-class BadModel(BadData):
+class BadModel(ClientError):
     """Invalid Model Data error."""
 
     @property
@@ -108,7 +135,7 @@ class BadModel(BadData):
 
 
 @error_decorator(use_parent_error_code=True)
-class InvalidTestData(BadArgument):
+class InvalidData(BadArgument):
     """Invalid Test Data error."""
 
     @property
@@ -118,7 +145,7 @@ class InvalidTestData(BadArgument):
         Returns:
             str: _description_
         """
-        return ErrorStrings.InvalidTestData
+        return ErrorStrings.InvalidData
 
 
 @error_decorator(use_parent_error_code=True)
@@ -136,20 +163,6 @@ class InvalidFileInputSource(BadArgument):
 
 
 @error_decorator(use_parent_error_code=True)
-class InvalidPredictionsData(BadArgument):
-    """Invalid Predictions file error."""
-
-    @property
-    def message_format(self) -> str:
-        """Message Format.
-
-        Returns:
-            str: _description_
-        """
-        return ErrorStrings.InvalidPredictionsData
-
-
-@error_decorator(use_parent_error_code=True)
 class InvalidPredictionColumnNameData(BadArgument):
     """Invalid Prediction Column Name data error."""
 
@@ -161,20 +174,6 @@ class InvalidPredictionColumnNameData(BadArgument):
             str: _description_
         """
         return ErrorStrings.InvalidPredictionColumnNameData
-
-
-@error_decorator(use_parent_error_code=True)
-class InvalidGroundTruthData(BadArgument):
-    """Invalid Ground Truth data error."""
-
-    @property
-    def message_format(self) -> str:
-        """Message Format.
-
-        Returns:
-            str: _description_
-        """
-        return ErrorStrings.InvalidGroundTruthData
 
 
 @error_decorator(use_parent_error_code=True)
@@ -276,6 +275,20 @@ class EmptyInputData(BadData):
 
 
 @error_decorator(use_parent_error_code=True)
+class BadInputColumnData(BadData):
+    """Bad Input Column Data error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.BadInputColumnData
+
+
+@error_decorator(use_parent_error_code=True)
 class BadLabelColumnData(BadData):
     """Bad Label Column Data error."""
 
@@ -287,6 +300,20 @@ class BadLabelColumnData(BadData):
             str: _description_
         """
         return ErrorStrings.BadLabelColumnName
+
+
+@error_decorator(use_parent_error_code=True)
+class BadQuestionsContextGroundTruthData(BadData):
+    """Bad Questions and Context in Ground Truth Data error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.BadQuestionsContextGroundTruthData
 
 
 @error_decorator(use_parent_error_code=True)
@@ -384,3 +411,29 @@ class MetricsLoggingError(ClientError):
             str: _description_
         """
         return ErrorStrings.MetricLoggingError
+
+
+class FilteringDataError(ClientError):
+    """Filtering Data Failure error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.FilteringDataError
+
+
+class SavingOutputError(ClientError):
+    """Saving Output Failure error."""
+
+    @property
+    def message_format(self) -> str:
+        """Message Format.
+
+        Returns:
+            str: _description_
+        """
+        return ErrorStrings.SavingOutputError

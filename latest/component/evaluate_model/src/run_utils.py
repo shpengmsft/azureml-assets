@@ -24,6 +24,7 @@ class DummyWorkspace:
         self.name = "local-ws"
         self.subscription_id = ""
         self.location = "local"
+        self.resource_group = ""
 
     def get_mlflow_tracking_uri(self):
         """Mlflow Tracking URI.
@@ -93,10 +94,13 @@ class TestRun:
         """
         if not isinstance(self._run, _OfflineRun):
             target_name = self._run.get_details()["target"]
-            if self.workspace.compute_targets.get(target_name):
-                return self.workspace.compute_targets[target_name].vm_size
-            else:
-                return "serverless"
+            try:
+                if self.workspace.compute_targets.get(target_name):
+                    return self.workspace.compute_targets[target_name].vm_size
+                else:
+                    return "serverless"
+            except Exception:
+                return "Unknown"
         return "local"
 
     @property
@@ -179,7 +183,7 @@ class TestRun:
                     info["model_asset_id"] = model_asset_id
                     if model_asset_id.startswith("azureml://registries"):
                         info["model_source"] = "registry"
-                        model_info = re.search("azureml://registries/(.+?)/models/(.+?)/versions/(.+?)",
+                        model_info = re.search("azureml://registries/(.+)/models/(.+)/versions/(.+)",
                                                model_asset_id)
                         info["model_registry_name"] = model_info.group(1)
                         info["model_name"] = model_info.group(2)
@@ -196,7 +200,7 @@ class TestRun:
                     info['moduleId'] = module_id
                     if module_id.startswith("azureml://registries"):
                         info["moduleSource"] = "registry"
-                        module_info = re.search("azureml://registries/(.+?)/components/(.+?)/versions/(.+?)",
+                        module_info = re.search("azureml://registries/(.+)/components/(.+)/versions/(.+)",
                                                 module_id)
                         info["moduleRegistryName"] = module_info.group(1)
                         info["moduleVersion"] = module_info.group(3)

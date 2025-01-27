@@ -4,15 +4,13 @@
 """Entry script for Data Drift Compute Metrics Spark Component."""
 
 import argparse
-from io_utils import (
+from data_drift_compute_metrics.io_utils import (
     select_columns_from_spark_df,
     output_computed_measures_tests,
 )
-from shared_utilities.io_utils import (
-    try_read_mltable_in_spark_with_warning,
-    try_read_mltable_in_spark,
-)
-from compute_data_drift import compute_data_drift_measures_tests
+from shared_utilities.io_utils import try_read_mltable_in_spark_with_error
+from shared_utilities.df_utils import validate_column_names
+from data_drift_compute_metrics.compute_data_drift import compute_data_drift_measures_tests
 
 
 def run():
@@ -26,28 +24,25 @@ def run():
     parser.add_argument("--numerical_metric", type=str)
     parser.add_argument("--categorical_threshold", type=str)
     parser.add_argument("--numerical_threshold", type=str)
+    parser.add_argument("--override_numerical_features", type=str, required=False)
+    parser.add_argument("--override_categorical_features", type=str, required=False)
     parser.add_argument("--feature_names", type=str, default=None)
     args = parser.parse_args()
 
     # Select columns
     select_columns = None
 
-    baseline_df = try_read_mltable_in_spark_with_warning(
+    baseline_df = try_read_mltable_in_spark_with_error(
         args.baseline_dataset, "baseline_dataset"
     )
-    production_df = try_read_mltable_in_spark_with_warning(
+    production_df = try_read_mltable_in_spark_with_error(
         args.production_dataset, "production_dataset"
     )
-
-    if not baseline_df or not production_df:
-        print("Skipping metric computation.")
-        return
+    validate_column_names(baseline_df)
+    validate_column_names(production_df)
 
     if args.feature_names:
-        features = try_read_mltable_in_spark(args.feature_names, "feature_names")
-
-        if not features:
-            return
+        features = try_read_mltable_in_spark_with_error(args.feature_names, "feature_names")
 
         select_columns = [row["featureName"] for row in features.collect()]
         baseline_df = select_columns_from_spark_df(baseline_df, select_columns)
@@ -60,6 +55,8 @@ def run():
         args.categorical_metric,
         args.numerical_threshold,
         args.categorical_threshold,
+        args.override_numerical_features,
+        args.override_categorical_features
     )
     # Save metrics in default blob store
     output_computed_measures_tests(metrics_df, args.signal_metrics)

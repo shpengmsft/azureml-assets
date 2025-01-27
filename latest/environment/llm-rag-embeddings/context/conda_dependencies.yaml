@@ -3,25 +3,43 @@ channels:
 - conda-forge
 - anaconda
 dependencies:
-- python=3.8
-- pip=21.3.1
+- python=3.9
+- pip=24.0
 - pip:
-  - azureml-rag[azure,faiss,cognitive_search,document_parsing,data_generation,pinecone]>=0.2.14
-  - langchain==0.0.236
-  - azureml-core==1.53.0
-  - azureml-telemetry==1.53.0
-  - azureml-mlflow==1.53.0
-  - azure-search-documents==11.4.0b8
-  - psutil~=5.8.0
-  - pandas~=1.1.5
-  - GitPython>=3.1
-  - msrest>=0.6.18
-  - azure-core<2.0.0,>=1.8.0,!=1.22.0
-  - azure-mgmt-core<2.0.0,>=1.3.0
+    # RAG package
+  - azureml-rag>=0.2.37.1
+    # Azure
+  - azure-ai-formrecognizer # explicitly install for [document_parsing]
+  - azure-ai-ml>=1.10.0,<=1.16.1 # explicitly install for [data_generation]
+  - azure-cosmos>=4.7.0 # explicitly install for [azure_cosmos_nosql]
   - azure-keyvault-secrets==4.6.0
-    # package dependency needed for aml run token authentication
-  - python-dateutil>=2.7.3,<3.0.0
-  - PyJWT<3.0.0
-  - pytz
-  - cryptography>=41.0.4
-  - azure-ai-formrecognizer==3.3.1
+  - azure-mgmt-cognitiveservices~=13.4.0
+  - azure-search-documents>=11.4.0 # explicitly install for [cognitive_search]
+    # Azure ML packages
+  - azureml-contrib-services
+  - azureml-dataset-runtime==1.59.0
+  - azureml-inference-server-http>=1.3.0
+  - azureml-mlflow==1.59.0.post1
+  - azureml-telemetry==1.59.0
+    # More packages needed for RAG extras
+  - beautifulsoup4~=4.11.2 # explicitly install for [data_generation] [document_parsing]
+  - langchain>=0.3.0,<0.4.0 # explicitly install for [langchain]
+  - langchain-community>=0.3.0,<0.4.0 # explicitly install for [langchain]
+  - lxml # explicitly install for [data_generation]
+  - faiss-cpu~=1.7.3 # explicitly install for [faiss]
+  - markdown # explicitly install for [document_parsing]
+  - nltk~=3.9.1 # explicitly install for [document_parsing]
+  - pandas>=1 # explicitly install for [data_generation] [document_parsing]
+  - pymilvus>=2.3.0 # explicitly install for [milvus]
+  - pymongo # explicitly install for [azure_cosmos_mongo_vcore]
+  - pypdf~=3.17.1 # explicitly install for [document_parsing]
+  - tika~=2.6.0 # explicitly install for [document_parsing]
+  - unstructured # explicitly install for [document_parsing]
+    # Other public packages
+  - datasets~=2.10.1
+  - mlflow>=2.6.0
+  - polling2~=0.5.0
+  - psutil~=5.8.0
+  - pymssql==2.2.7
+  - sentence-transformers
+  - sqlalchemy==1.4.46

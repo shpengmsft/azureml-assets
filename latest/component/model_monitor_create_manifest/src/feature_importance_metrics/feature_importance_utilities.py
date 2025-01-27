@@ -2,9 +2,9 @@
 # Licensed under the MIT License.
 
 """This file contains the core logic for feature attribution drift component."""
-import pandas as pd
 from datetime import datetime
 from shared_utilities.io_utils import init_spark
+import pandas as pd
 
 
 def log_time_and_message(message):
@@ -28,31 +28,22 @@ def convert_pandas_to_spark(pandas_data):
     return spark.createDataFrame(pandas_data)
 
 
-def compute_categorical_features(baseline_data, target_column):
-    """Compute which features are categorical based on data type of the columns.
+def mark_categorical_column(baseline_df, target_column, categorical_features_lgbm, numerical_features):
+    """Mark the categorical column (except target column) type as "category" so lightgbm will ignore them.
 
-    :param baseline_data: The baseline data meaning the data used to create the
+    :param baseline_df: The baseline data meaning the data used to create the
     model monitor
-    :type baseline_data: pandas.DataFrame
-    :param target_column: the column to predict
+    :type baseline_df: pandas.DataFrame
+    :param target_column: the target column name
     :type target_column: string
-    :return: categorical features
-    :rtype: list[string]
     """
-    categorical_features = []
-    for column in baseline_data.columns:
-        baseline_column = pd.Series(baseline_data[column])
-        if baseline_column.name != target_column:
-            column_type = baseline_column.dtype.name
-            if column_type == 'object' or column_type == 'bool':
-                categorical_features.append(baseline_column.name)
-            # if the type is int and the ratio of distinct values to total values
-            # is less than .05 than the column is considered categorical
-            elif column_type == 'int64':
-                distinct_column_values = len(baseline_column.unique())
-                total_column_values = len(baseline_column)
-                distinct_value_ratio = distinct_column_values / total_column_values
-                if distinct_value_ratio < 0.05:
-                    categorical_features.append(baseline_column.name)
-    print("Successfully categorized columns")
-    return categorical_features
+    for column in baseline_df.columns:
+        col = pd.Series(baseline_df[column])
+        # lightgbm requires data/datetime to be converted to int
+        if (pd.api.types.is_datetime64_dtype(col) or pd.api.types.is_timedelta64_dtype(col)):
+            baseline_df[column] = baseline_df[column].astype('int64')
+        elif column in categorical_features_lgbm:
+            baseline_df[column] = baseline_df[column].astype('category')
+        elif column not in categorical_features_lgbm and column not in numerical_features and column != target_column:
+            log_time_and_message(f"Unknown column: {column}, defult to category.")
+            baseline_df[column] = baseline_df[column].astype('category')

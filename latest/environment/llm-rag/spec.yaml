@@ -2,13 +2,12 @@ $schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 
 tags:
   Preview: ""
-
 description: >-
   An environment for standard Large Language Model Retrieval Augmented Generation
   components.
 
 name: "llm-rag"
-version: "24"
+version: "25"
 
 build:
   path: "context"

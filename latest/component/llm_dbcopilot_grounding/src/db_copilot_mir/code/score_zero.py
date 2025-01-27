@@ -51,18 +51,33 @@ def init():
     # setting up db copilot
     with open(os.path.join(current_dir, "secrets.json")) as f:
         secret_manager: dict = json.load(f)
-        embedding_aoai_connection = AzureOpenAIConnection(
-            api_key=secret_manager.get("embedding-aoai-api-key"),
-            api_base=secret_manager.get("embedding-aoai-api-base"),
-            api_type="azure",
-            api_version="2023-03-15-preview",
-        )
-        chat_aoai_connection = AzureOpenAIConnection(
-            api_key=secret_manager.get("chat-aoai-api-key"),
-            api_base=secret_manager.get("chat-aoai-api-base"),
-            api_type="azure",
-            api_version="2023-03-15-preview",
-        )
+        api_key = secret_manager.get("embedding-aoai-api-key", None)
+        if api_key:
+            logging.info("Using api_key access Azure OpenAI")
+            embedding_aoai_connection = AzureOpenAIConnection(
+                api_key=secret_manager.get("embedding-aoai-api-key"),
+                api_base=secret_manager.get("embedding-aoai-api-base"),
+                api_type="azure",
+                api_version="2023-03-15-preview",
+            )
+            chat_aoai_connection = AzureOpenAIConnection(
+                api_key=secret_manager.get("chat-aoai-api-key"),
+                api_base=secret_manager.get("chat-aoai-api-base"),
+                api_type="azure",
+                api_version="2023-03-15-preview",
+            )
+        else:
+            logging.info("using managed identity access Azure OpenAI")
+            embedding_aoai_connection = AzureOpenAIConnection(
+                api_base=secret_manager.get("embedding-aoai-api-base"),
+                api_type="azure",
+                api_version="2023-03-15-preview",
+            )
+            chat_aoai_connection = AzureOpenAIConnection(
+                api_base=secret_manager.get("chat-aoai-api-base"),
+                api_type="azure",
+                api_version="2023-03-15-preview",
+            )
         embedding_deploy_name = secret_manager.get("embedding-deploy-name")
         chat_deploy_name = secret_manager.get("chat-deploy-name")
     shared_config_file = os.path.join(current_dir, "shared_config.json")
@@ -126,10 +141,20 @@ def set_db_copilot_adapter(db_name, db_copilot_config, visibility):
     """Set a dbcopilot adapter."""
     cache_dir = os.getenv("AZUREML_MODEL_DIR")
     cache_uri = os.getenv("DBCOPILOT_CACHE_URI")
+
+    def simple_db_name(db_name):
+        if db_name.startswith("azureml://"):
+            return db_name.split("/")[-1].replace(".", "_")
+        return db_name
+
+    instruct_template = os.getenv("INSTRUCT_TEMPLATE", None)
     if cache_uri:
-        cache_folder = os.path.join(cache_dir, visibility.value.lower(), db_name)
+        cache_folder = os.path.join(
+            cache_dir, visibility.value.lower(), simple_db_name(db_name)
+        )
         with DatastoreUploader(
-            f"{cache_uri}{visibility.value.lower()}/{db_name}", cache_folder
+            f"{cache_uri}{visibility.value.lower()}/{simple_db_name(db_name)}",
+            cache_folder,
         ):
             db_copilot_adapter = DBCopilotAdapter(
                 db_copilot_config,
@@ -137,6 +162,7 @@ def set_db_copilot_adapter(db_name, db_copilot_config, visibility):
                 chat_aoai_connection=chat_aoai_connection,
                 history_service=history_service,
                 cache_folder=cache_folder,
+                instruct_template=instruct_template,
             )
     else:
         db_copilot_adapter = DBCopilotAdapter(
@@ -144,6 +170,7 @@ def set_db_copilot_adapter(db_name, db_copilot_config, visibility):
             embedding_aoai_connection=embedding_aoai_connection,
             chat_aoai_connection=chat_aoai_connection,
             history_service=history_service,
+            instruct_template=instruct_template,
         )
     if visibility == Visibility.Shared:
         db_copilots_shared.set(db_name, db_copilot_adapter)
@@ -201,6 +228,7 @@ class RequestBody:
     max_rows: Optional[int] = None
     max_sampling_rows: Optional[int] = None
     max_text_length: Optional[int] = None
+    max_knowledge_pieces: Optional[int] = None
     is_stream: bool = False
     # Context
     tools: Optional[List[str]] = None
@@ -264,7 +292,7 @@ def _get_db_provider(request_body: RequestBody, session_id: str):
         return db_copilot
     else:
         return AMLResponse(
-            "No db_copilot is available. Please specify Session id or datasotre_uri or db_name is required",
+            "No db_copilot is available. Please specify Session id or datastore_uri or db_name is required",
             400,
         )
 

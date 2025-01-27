@@ -8,10 +8,16 @@ import pyspark.sql as pyspark_sql
 import pyspark.sql.functions as F
 from scipy.spatial import distance
 from scipy.stats import ks_2samp, wasserstein_distance
-from io_utils import get_output_spark_df, init_spark
+from data_drift_compute_metrics.io_utils import get_output_spark_df, init_spark
 from shared_utilities.histogram_utils import (
     get_dual_histogram_bin_edges,
     get_histograms,
+)
+from shared_utilities.constants import (
+    JENSEN_SHANNON_DISTANCE_METRIC_NAME,
+    NORMALIZED_WASSERSTEN_DISTANCE_METRIC_NAME,
+    POPULATION_STABILITY_INDEX_METRIC_NAME,
+    TWO_SAMPLE_KOLMOGOROV_SMIRNOV_TEST_METRIC_NAME
 )
 
 
@@ -130,7 +136,7 @@ def _jensen_shannon_numerical(
             prod_histograms_percent[column],
             base=2)
 
-        row = [column, float(js_distance), "Numerical", "JensenShannonDistance", column, ""]
+        row = [column, float(js_distance), "Numerical", JENSEN_SHANNON_DISTANCE_METRIC_NAME, column, ""]
         rows.append(row)
 
     output_df = get_output_spark_df(rows)
@@ -160,10 +166,11 @@ def _normalized_wasserstein(
 
         # Normalize the Wasserstein distance by dividing it by the norm
         std_dev = baseline_df.select(F.stddev(column)).collect()[0][0]
-        norm = max(std_dev, 0.001)
+        # if all the values of the column is None, we would get None stddev value
+        norm = max(std_dev, 0.001) if std_dev is not None else 0.001
 
         normalized_distance = distance / norm
-        row = [column, float(normalized_distance), "Numerical", "NormalizedWassersteinDistance", column, ""]
+        row = [column, float(normalized_distance), "Numerical", NORMALIZED_WASSERSTEN_DISTANCE_METRIC_NAME, column, ""]
         rows.append(row)
 
     output_df = get_output_spark_df(rows)
@@ -183,7 +190,7 @@ def _ks2sample_pandas_impl(
             baseline_col = pd.Series(baseline_df[column])
             production_col = pd.Series(production_df[column])
             ks2s = ks_2samp(baseline_col, production_col).pvalue
-            row = [column, float(ks2s), "Numerical", "TwoSampleKolmogorovSmirnovTest", column, ""]
+            row = [column, float(ks2s), "Numerical", TWO_SAMPLE_KOLMOGOROV_SMIRNOV_TEST_METRIC_NAME, column, ""]
             rows.append(row)
 
         output_df = get_output_spark_df(rows)
@@ -237,7 +244,7 @@ def _psi_numerical(
                 production_percent[i] / baseline_percent[i]
             )
 
-        row = [column, float(psi), "Numerical", "PopulationStabilityIndex", column, ""]
+        row = [column, float(psi), "Numerical", POPULATION_STABILITY_INDEX_METRIC_NAME, column, ""]
         rows.append(row)
 
     output_df = get_output_spark_df(rows)
@@ -254,7 +261,7 @@ def compute_numerical_data_drift_measures_tests(
     numerical_threshold: float,
 ):
     """Compute Data drift metrics and tests for numerical columns."""
-    if numerical_metric == "JensenShannonDistance":
+    if numerical_metric == JENSEN_SHANNON_DISTANCE_METRIC_NAME:
         output_df = _jensen_shannon_numerical(
             baseline_df,
             production_df,
@@ -262,7 +269,7 @@ def compute_numerical_data_drift_measures_tests(
             production_df_count,
             numerical_columns,
         )
-    elif numerical_metric == "NormalizedWassersteinDistance":
+    elif numerical_metric == NORMALIZED_WASSERSTEN_DISTANCE_METRIC_NAME:
         output_df = _normalized_wasserstein(
             baseline_df,
             production_df,
@@ -270,7 +277,7 @@ def compute_numerical_data_drift_measures_tests(
             production_df_count,
             numerical_columns,
         )
-    elif numerical_metric == "PopulationStabilityIndex":
+    elif numerical_metric == POPULATION_STABILITY_INDEX_METRIC_NAME:
         output_df = _psi_numerical(
             baseline_df,
             production_df,
@@ -278,7 +285,7 @@ def compute_numerical_data_drift_measures_tests(
             production_df_count,
             numerical_columns,
         )
-    elif numerical_metric == "TwoSampleKolmogorovSmirnovTest":
+    elif numerical_metric == TWO_SAMPLE_KOLMOGOROV_SMIRNOV_TEST_METRIC_NAME:
         output_df = _ks2sample_pandas_impl(
             baseline_df,
             production_df,
