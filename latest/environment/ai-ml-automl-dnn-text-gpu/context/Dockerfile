@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2004-cu121-py310-torch222:biweekly.202501.3
+FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2004-cu121-py310-torch222:biweekly.202502.1
 
 ENV AZUREML_CONDA_ENVIRONMENT_PATH /azureml-envs/azureml-automl-dnn-text-gpu
 # Prepend path to AzureML conda environment
@@ -37,7 +37,7 @@ SHELL ["conda", "run", "-p", "$AZUREML_CONDA_ENVIRONMENT_PATH", "/bin/bash", "-c
 # and earlier versions of tokenizers cause log spam with transformers==4.16.0.
 RUN pip install \
                 # begin pypi dependencies
-                azureml-core==1.59.0 \
+                azureml-core==1.59.0.post1 \
                 azureml-mlflow==1.59.0.post1 \
                 azureml-automl-core==1.59.0 \
                 azureml-automl-dnn-nlp==1.59.0 \

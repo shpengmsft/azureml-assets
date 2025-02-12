@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.1-cudnn8-ubuntu20.04:20250121.v1
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.1-cudnn8-ubuntu20.04:20250209.v1
 
 USER root
 
@@ -57,7 +57,7 @@ RUN conda install -p $AZUREML_CONDA_ENVIRONMENT_PATH \
 # Install pip dependencies
 RUN pip install \
                 # begin pypi dependencies
-                azureml-core==1.59.0 \
+                azureml-core==1.59.0.post1 \
                 azureml-mlflow==1.59.0.post1 \
                 azureml-pipeline-core==1.59.0 \
                 azureml-telemetry==1.59.0 \

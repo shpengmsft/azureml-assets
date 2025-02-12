@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.6-cudnn8-ubuntu20.04:20250121.v1
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.6-cudnn8-ubuntu20.04:20250209.v1
 
 ENV AZUREML_CONDA_ENVIRONMENT_PATH /azureml-envs/azureml-automl-dnn-forecasting-gpu
 # Prepend path to AzureML conda environment
@@ -41,7 +41,7 @@ RUN conda create -p $AZUREML_CONDA_ENVIRONMENT_PATH \
 # GitPython>=3.1.41 is required for https://github.com/advisories/GHSA-2mqj-m65w-jghx and is not available in conda
 RUN pip install \
                 # begin pypi dependencies
-                azureml-core==1.59.0 \
+                azureml-core==1.59.0.post1 \
                 azureml-mlflow==1.59.0.post1 \
                 azureml-defaults==1.59.0 \
                 azureml-telemetry==1.59.0 \

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.6-cudnn8-ubuntu20.04:20250121.v1
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.6-cudnn8-ubuntu20.04:20250209.v1
 
 USER root
 
@@ -64,7 +64,7 @@ RUN conda install pytorch=2.2.2 -c pytorch -c nvidia && conda clean -a -y
 # Install pip dependencies
 RUN pip install \
                 # begin pypi dependencies
-                azureml-core==1.59.0 \
+                azureml-core==1.59.0.post1 \
                 azureml-pipeline-core==1.59.0 \
                 azureml-telemetry==1.59.0 \
                 azureml-defaults==1.59.0 \
