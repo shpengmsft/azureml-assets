@@ -30,11 +30,11 @@ RUN pip install 'responsibleai~=0.36.0' \
                 'responsibleai-vision==0.3.8'
 
 # Install azureml packages
-RUN pip install 'azureml-mlflow==1.59.0.post1' \
+RUN pip install 'azureml-mlflow==1.60.0' \
                 'azureml-rai-utils==0.0.6'
 
-RUN pip install 'azureml-dataset-runtime==1.59.0' \
-                'azureml-automl-dnn-vision==1.59.0'
+RUN pip install 'azureml-dataset-runtime==1.60.0' \
+                'azureml-automl-dnn-vision==1.60.0'
 
 RUN pip install 'scikit-learn>=1.5.1' \
                 'interpret-community==0.31.0' \
