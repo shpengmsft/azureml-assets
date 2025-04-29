@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi5.0-ubuntu24.04:20250414.v1
+FROM mcr.microsoft.com/azureml/openmpi5.0-ubuntu24.04:20250427.v1
 
 # Install OpenCV native dependencies
 RUN apt-get update
@@ -30,7 +30,7 @@ RUN pip install 'responsibleai~=0.36.0' \
                 'responsibleai-vision==0.3.8'
 
 # Install azureml packages
-RUN pip install 'azureml-mlflow==1.60.0' \
+RUN pip install 'azureml-mlflow==1.60.0.post1' \
                 'azureml-rai-utils==0.0.6'
 
 RUN pip install 'azureml-dataset-runtime==1.60.0' \
