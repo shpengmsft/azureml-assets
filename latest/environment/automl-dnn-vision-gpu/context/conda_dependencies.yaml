@@ -3,14 +3,14 @@ channels:
 - conda-forge
 - cerebis
 dependencies:
-- python=3.9
-- pip=21.3.1
+- python=3.10
+- pip=25.3
 - numpy~=1.23.5
 - libffi=3.3
 - pycocotools=2.0.4
 - shap=0.39.0
 - llvmlite=0.39.1
-- setuptools=72.1.0
+- setuptools=78.1.1
 - wheel=0.44.0
 - tbb=2021.1.1
 - pip:
@@ -22,10 +22,9 @@ dependencies:
   - azureml-responsibleai==1.61.0
   - azureml-automl-core==1.61.0.post1
   - azureml-automl-runtime==1.61.0
-  - azureml-train-automl-client==1.61.0.post1
   - azureml-defaults==1.61.0
   - azureml-interpret==1.61.0
-  - azureml-train-automl-runtime==1.61.0
-  - azureml-automl-dnn-vision==1.61.0.post1
   - azureml-dataprep>=2.24.4
   - azure-identity>=1.16.1
+  - mlflow-skinny==2.15.1
+  - filelock>=3.20.1

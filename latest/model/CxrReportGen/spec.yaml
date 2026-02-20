@@ -5,8 +5,9 @@ path: ./
 
 properties:
   inference-min-sku-spec: 24|1|220|64
-  inference-recommended-sku: Standard_NC24ads_A100_v4, Standard_NC48ads_A100_v4, Standard_NC96ads_A100_v4,
-    Standard_ND96asr_v4, Standard_ND96amsr_A100_v4, Standard_NC40ads_H100_v5, Standard_NC80adis_H100_v5,
+  inference-recommended-sku: Standard_NC24ads_A100_v4, Standard_NC48ads_A100_v4,
+    Standard_NC96ads_A100_v4, Standard_ND96asr_v4, Standard_ND96amsr_A100_v4, 
+    Standard_NC40ads_H100_v5, Standard_NC80adis_H100_v5, 
     Standard_ND96isr_H100_v5
   languages: en
   SharedComputeCapacityEnabled: true
@@ -21,10 +22,11 @@ tags:
   author: Microsoft
   hiddenlayerscanned: ""
   SharedComputeCapacityEnabled: ""
-  inference_compute_allow_list: [Standard_NC24ads_A100_v4, Standard_NC48ads_A100_v4,
-    Standard_NC96ads_A100_v4, Standard_ND96asr_v4, Standard_ND96amsr_A100_v4, Standard_NC40ads_H100_v5,
-    Standard_NC80adis_H100_v5, Standard_ND96isr_H100_v5]
-version: 7
+  inference_compute_allow_list: [Standard_NC24ads_A100_v4, 
+      Standard_NC48ads_A100_v4, Standard_NC96ads_A100_v4, Standard_ND96asr_v4, 
+      Standard_ND96amsr_A100_v4, Standard_NC40ads_H100_v5, 
+      Standard_NC80adis_H100_v5, Standard_ND96isr_H100_v5]
+version: 11
 description: |
   ## Overview
 
@@ -36,6 +38,10 @@ description: |
   You bear sole responsibility and liability for any use of CXRReportGen, including verification of outputs and incorporation into any product or service intended for a medical purpose or to inform clinical decision-making, compliance with applicable healthcare laws and regulations, and obtaining any necessary clearances or approvals. 
 
   For documentation and example Jupyter Notebooks, visit: https://aka.ms/CXRReportGenDocs.
+
+  For example code and usage demonstrations, visit the [Healthcare AI Examples repository](https://aka.ms/HealthcareAIExamples).
+
+  CXRReportGen fine-tuning is available through our private preview program. If you would like to try fine-tuning CXRReportGen, please contact us by submitting your information into this form and we will reach out with further instructions: https://aka.ms/cxrrg-fine-tuning-request.
 
   ### Training information
 
@@ -161,7 +167,8 @@ description: |
 
   For detailed guidelines on ethical use, refer to Microsoft’s [Responsible AI Principles](https://www.microsoft.com/en-us/ai/responsible-ai)
 
-  ## Hardware Requirement for Compute Instances
-  - Supports CPU and GPU
-  - Default: Single A100 GPU or Intel CPU
-  - Minimum: Single GPU instance with 24Gb Memory (Fastest) or CPU
+  ## Version History
+
+  | Version | Date | Description |
+  |---------|------|-------------|
+  | 11 | 2026-02-11 | - Initial version tracking |

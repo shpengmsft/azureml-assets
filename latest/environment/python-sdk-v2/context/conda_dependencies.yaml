@@ -3,17 +3,15 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10
-  - pip=23.3
   - pip:
+    - pip==26.0.1
     - azure-ai-ml==1.31.0
     - azure-identity==1.25.2
-    # v1 package for fetching run details
-    - azureml-core==1.61.0.post1
-    # v1 package for logging and telemetry. Switch to using application-insights and implementing custom logging
-    - azureml-telemetry==1.61.0
     - cryptography==46.0.5
     - certifi==2026.1.4
     - urllib3==2.6.3
     - paramiko==4.0.0
     - idna==3.11
     - tqdm==4.67.3
+    - wheel>=0.46.2
+    - setuptools>=75.8.0

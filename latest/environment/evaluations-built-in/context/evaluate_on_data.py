@@ -15,9 +15,39 @@ import sys
 
 from azure.ai.ml.identity import AzureMLOnBehalfOfCredential
 from azure.ai.evaluation import evaluate
+from azure.ai.evaluation._evaluators._eci._eci import ECIEvaluator
+from azure.ai.evaluation._evaluate._evaluate_aoai import (
+    _convert_remote_eval_params_to_grader
+)
 from save_evaluation import load_evaluator
-from model_target import ModelTarget
+from model_target import ModelTarget, get_key_from_dict
+from azure.ai.evaluation import (
+    BleuScoreEvaluator,
+    CodeVulnerabilityEvaluator,
+    CoherenceEvaluator,
+    ContentSafetyEvaluator,
+    F1ScoreEvaluator,
+    FluencyEvaluator,
+    GleuScoreEvaluator,
+    GroundednessEvaluator,
+    GroundednessProEvaluator,
+    HateUnfairnessEvaluator,
+    IndirectAttackEvaluator,
+    MeteorScoreEvaluator,
+    ProtectedMaterialEvaluator,
+    QAEvaluator,
+    RelevanceEvaluator,
+    ResponseCompletenessEvaluator,
+    RetrievalEvaluator,
+    RougeScoreEvaluator,
+    SelfHarmEvaluator,
+    SexualEvaluator,
+    SimilarityEvaluator,
+    UngroundedAttributesEvaluator,
+    ViolenceEvaluator
+)
 
+os.environ["AZUREML_OBO_ENABLED"] = "True"
 AZURE_ENDPOINT = "AzureEndpoint"
 API_KEY = "ApiKey"
 AZURE_DEPLOYMENT = "AzureDeployment"
@@ -39,9 +69,106 @@ CONTEXT_KEY = "context"
 RESPONSE_KEY = "response"
 GENERATED_RESPONSE_KEY = "generated_response"
 GENERATED_RESPONSE_MAPPING = f"${{data.{GENERATED_RESPONSE_KEY}}}"
+FOUNDRY_EVALUATOR = "built-in"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+
+class BuiltInEvaluatorConstructor:
+    """Constructs a built-in evaluator based on the provided configuration."""
+
+    def __init__(self, evaluator_configuration):
+        """Map evaluator names to their corresponding classes."""
+        # NOTE: Maintain alphabetical order for better readability
+        self.evaluator_classes = {
+            "bleu_score": BleuScoreEvaluator,
+            "code_vulnerability": CodeVulnerabilityEvaluator,
+            "coherence": CoherenceEvaluator,
+            "content_safety": ContentSafetyEvaluator,
+            "eci": ECIEvaluator,
+            "f1_score": F1ScoreEvaluator,
+            "fluency": FluencyEvaluator,
+            "gleu_score": GleuScoreEvaluator,
+            "groundedness": GroundednessEvaluator,
+            "groundedness_pro": GroundednessProEvaluator,
+            "hate_unfairness": HateUnfairnessEvaluator,
+            "indirect_attack": IndirectAttackEvaluator,
+            "meteor_score": MeteorScoreEvaluator,
+            "protected_material": ProtectedMaterialEvaluator,
+            "qa": QAEvaluator,
+            "relevance": RelevanceEvaluator,
+            "response_completeness": ResponseCompletenessEvaluator,
+            "retrieval": RetrievalEvaluator,
+            "rouge_score": RougeScoreEvaluator,
+            "self_harm": SelfHarmEvaluator,
+            "sexual": SexualEvaluator,
+            "similarity_score": SimilarityEvaluator,
+            "ungrounded_attributes": UngroundedAttributesEvaluator,
+            "violence": ViolenceEvaluator,
+        }
+        self.evaluator_configuration = evaluator_configuration
+        self.evaluator = self._initialize_evaluator()
+
+    def _get_builtin_evaluator_name_type(self, evaluator_id):
+        """Extract the evaluator name and type from a given evaluator ID if it matches the expected format."""
+        foundry_eval_regex = r"azureai://([^/]+)/evaluators/([^/]+)"
+
+        match_foundry_eval = re.match(foundry_eval_regex, evaluator_id)
+
+        if match_foundry_eval:
+            evaluator_type = match_foundry_eval.group(1)
+            evaluator_name = match_foundry_eval.group(2)
+
+            if evaluator_type != FOUNDRY_EVALUATOR:
+                raise Exception(f"Unknown evaluator type: {evaluator_type}")
+
+            return (evaluator_name, evaluator_type)
+
+    def _map_to_rai_evaluator_name(self, evaluator_name):
+        """
+        Map given evaluator name to its corresponding RAI evaluator name.
+
+        Returns the RAI evaluator string if found, else None.
+        """
+        mapping = {
+            "sexual": "Sexual-Content-Evaluator",
+            "hate_unfairness": "Hate-and-Unfairness-Evaluator",
+            "violence": "Violent-Content-Evaluator",
+            "self_harm": "Self-Harm-Related-Content-Evaluator",
+            "groundedness_pro": "Groundedness-Pro-Evaluator",
+            "protected_material": "Protected-Material-Evaluator",
+            "indirect_attack": "Indirect-Attack-Evaluator",
+            "content_safety": "Content-Safety-Evaluator",
+            "eci": "ECI-Evaluator",
+            "code_vulnerability": "Code-Vulnerability-Evaluator"
+        }
+        return mapping.get(evaluator_name, None)
+
+    def _initialize_evaluator(self):
+        (evaluator_name, evaluator_type) = self._get_builtin_evaluator_name_type(self.evaluator_configuration["Id"])
+        if evaluator_type == FOUNDRY_EVALUATOR:
+            if evaluator_name not in self.evaluator_classes:
+                raise ValueError(f"Unknown evaluator id: {evaluator_name}")
+
+            is_rai_evaluator = self._map_to_rai_evaluator_name(evaluator_name)
+            if is_rai_evaluator:
+                logger.info(f"Evaluator id: {self.evaluator_configuration['Id']} provided. Adding credentials")
+                # Add project URL and credential if present
+                if self.evaluator_configuration.get("InitParams") is None:
+                    logger.info("Evaluator configuration InitParams is None. Create empty dictionary")
+                    self.evaluator_configuration["InitParams"] = {}
+
+                self.evaluator_configuration["InitParams"]["credential"] = AzureMLOnBehalfOfCredential()
+
+            evaluator_class = self.evaluator_classes[evaluator_name]
+            init_params = self.evaluator_configuration.get("InitParams", {})
+
+            return evaluator_class(**init_params)
+
+    def construct(self):
+        """Return the constructed evaluator."""
+        return self.evaluator
 
 
 def update_value_in_dict(d, key_substring, new_func):
@@ -84,10 +211,21 @@ def initialize_evaluators(command_line_args):
     for evaluator_name, evaluator in evaluators_o.items():
         init_params = evaluator["InitParams"]
         update_value_in_dict(init_params, "AZURE_OPENAI_API_KEY", lambda x: os.environ[x.upper()])
-        flow = load_evaluator("./" + evaluator_name)
-        if any(rai_eval in evaluator["Id"] for rai_eval in rai_evaluators):
-            init_params["credential"] = AzureMLOnBehalfOfCredential()
-        evaluators[evaluator_name] = flow(**init_params)
+        if evaluator["Id"].startswith("azureai://") and "azure-openai" in evaluator["Id"]:
+            logger.info(f"Found azure-openai built-in evaluator: {evaluator_name}")
+            grader = _convert_remote_eval_params_to_grader(evaluator["Id"], init_params)
+            evaluators[evaluator_name] = grader
+        # check if evaluator id is new format
+        elif evaluator["Id"].startswith("azureai://"):
+            logger.info(f"Found foundry built-in evaluator: {evaluator_name}")
+            evaluator_constructor = BuiltInEvaluatorConstructor(evaluator)
+            load_built_in_evaluator = evaluator_constructor.construct()
+            evaluators[evaluator_name] = load_built_in_evaluator
+        else:
+            flow = load_evaluator("./" + evaluator_name)
+            if any(rai_eval in evaluator["Id"] for rai_eval in rai_evaluators):
+                init_params["credential"] = AzureMLOnBehalfOfCredential()
+            evaluators[evaluator_name] = flow(**init_params)
     return evaluators
 
 
@@ -112,33 +250,27 @@ def create_model_target_and_data_mapping(command_line_args):
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Invalid JSON in eval_target: {e}")
 
-    model_config = target_config.get(MODEL_CONFIG, {})
+    model_config = get_key_from_dict(target_config, MODEL_CONFIG, {})
 
-    api_key_env = model_config.get(API_KEY, "")
+    api_key_env = get_key_from_dict(model_config, API_KEY, "")
     api_key_value = os.environ.get(api_key_env.upper(), "")
-    if not api_key_value:
-        raise RuntimeError(f"API key environment variable '{api_key_env.upper()}' is missing or empty!")
 
-    model_config_type = str(model_config.get(TYPE, ""))
+    model_config_type = str(get_key_from_dict(model_config, TYPE, ""))
     logger.info(f"  - Type: {model_config_type}")
 
-    endpoint = model_config.get(AZURE_ENDPOINT, "")
-    model_params = target_config.get(MODEL_PARAMS, {}).copy()
-    data_mapping = model_params.pop(DATA_MAPPING, None)
+    endpoint = get_key_from_dict(model_config, AZURE_ENDPOINT, "")
+    model_params = get_key_from_dict(target_config, MODEL_PARAMS, {}).copy()
+    data_mapping = get_key_from_dict(model_params, DATA_MAPPING, None)
+    data_mapping_key_to_pop = next((k for k in model_params if k.lower() == DATA_MAPPING.lower()), None)
+    if data_mapping_key_to_pop:
+        logger.info(f"Removing dataMapping from model_params {data_mapping_key_to_pop}")
+        model_params.pop(data_mapping_key_to_pop)
     if data_mapping is None:
         data_mapping = DEFAULT_DATA_MAPPING
         logger.info(f"Using default dataMapping: {data_mapping}")
 
-    system_message = target_config.get(SYSTEM_MESSAGE, "")
-    few_shot_examples = target_config.get(FEW_SHOT_EXAMPLES, [])
-
-    logger.info("Creating ModelTarget with values:")
-    logger.info(f"  - Endpoint: {endpoint}")
-    logger.info(f"  - ApiKey: {'[HIDDEN]' if api_key_value else 'MISSING'}")
-    logger.info(f"  - ModelParams: {model_params}")
-    logger.info(f"  - SystemMessage: {system_message}")
-    logger.info(f"  - FewShotExamples: {few_shot_examples}")
-    logger.info(f"  - DataMapping: {data_mapping}")
+    system_message = get_key_from_dict(target_config, SYSTEM_MESSAGE, "")
+    few_shot_examples = get_key_from_dict(target_config, FEW_SHOT_EXAMPLES, [])
 
     model_target = ModelTarget(
         endpoint=endpoint,
@@ -147,13 +279,26 @@ def create_model_target_and_data_mapping(command_line_args):
         system_message=system_message,
         few_shot_examples=few_shot_examples,
     )
+    logger.info("Created ModelTarget.")
 
     return (model_target, data_mapping)
 
 
 def apply_target_on_data(data, model_target, data_mapping):
     """Apply target on input data."""
-    df = pd.read_json(data, lines=True)
+    input_filename = os.path.basename(data)
+    name, ext = os.path.splitext(input_filename)
+    df = pd.DataFrame()
+    try:
+        if ext == ".csv":
+            df = pd.read_csv(data)
+        elif ext == ".jsonl":
+            df = pd.read_json(data, lines=True)
+        else:
+            raise RuntimeError(f"Supported file types: jsonl and csv. {ext} not supported.")
+    except Exception as e:
+        raise RuntimeError(f"Failed to read file '{data}': {e}")
+
     mapping = {}
     for key, value in data_mapping.items():
         # ignore mappings with empty values
@@ -195,10 +340,17 @@ def apply_target_on_data(data, model_target, data_mapping):
 
     output_dir = data.replace(INPUT_EVAL_DATA_DIR, OUTPUT_EVAL_DATA_DIR)
     os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-    input_filename = os.path.basename(data)
-    output_filename = f"{os.path.splitext(input_filename)[0]}_output.jsonl"
+    output_filename = ""
+    if ext == ".csv":
+        output_filename = f"{name}_output.csv"
+    else:  # .jsonl
+        output_filename = f"{name}_output.jsonl"
+
     output_file = os.path.join(os.path.dirname(output_dir), output_filename)
-    df.to_json(output_file, orient="records", lines=True)
+    if ext == ".csv":
+        df.to_csv(output_file, index=False)
+    else:
+        df.to_json(output_file, orient="records", lines=True)
     logger.info(f"Saved updated DataFrame to {output_file}")
 
     return output_file
@@ -227,13 +379,14 @@ def run_evaluation(command_line_args, evaluators, evaluator_config, model_target
     logger.info(f"With the model target {model_target} and dataMapping {data_mapping}")
 
     data = command_line_args.eval_data
+    logger.info(f"Evaluation Data filename: {data}")
     if model_target:
         logger.info("Applying target on data")
         data = apply_target_on_data(data=data, model_target=model_target, data_mapping=data_mapping)
+        logger.info(f"Evaluation Data filename after applying target: {data}")
         logger.info("Updating evaluator config for generated_response data mapping")
         evaluator_config = update_evaluator_config_mapping_for_generated_response(command_line_args, evaluator_config)
 
-    logger.info(f"Evaluation Data: {data}")
     logger.info(f"With the evaluator config {evaluator_config}")
     results = evaluate(
         data=data,

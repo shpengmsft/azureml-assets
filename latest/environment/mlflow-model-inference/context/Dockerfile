@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/mirror/docker/library/ubuntu:22.04
 
 User root:root
+
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository -y ppa:adiscon/v8-stable && \
@@ -55,7 +56,6 @@ COPY configs/app etc/nginx/sites-available/app
 
 RUN chmod +x var/runit/*/*
 RUN chmod +x var/azureml-logger/start_logger.sh
-
 #RUN chmod +x /var/runit/nginx/run
 
 RUN ln -s /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app && \
@@ -96,7 +96,7 @@ RUN chown -R dockeruser:dockeruser /opt/miniconda
 USER dockeruser
 
 ENV PATH=/opt/miniconda/bin:$PATH
-RUN wget -qO /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py39_24.5.0-0-Linux-x86_64.sh && \
+RUN wget -qO /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py312_24.5.0-0-Linux-x86_64.sh && \
     bash /tmp/miniconda.sh -bf -p /opt/miniconda && \
     conda update --all -c conda-forge -y && \
     conda clean -ay && \
@@ -122,10 +122,16 @@ COPY mlflow_hf_score_cpu.py /var/mlflow_resources/mlflow_hf_score_cpu.py
 COPY mlflow_hf_score_gpu.py /var/mlflow_resources/mlflow_hf_score_gpu.py
 
 COPY conda_dependencies.yaml .
-RUN conda env create -p $AZUREML_CONDA_ENVIRONMENT_PATH -f conda_dependencies.yaml -q && \
+RUN conda clean -afy && \
+    pip uninstall -y h2 || true && \
+    conda env create -p $AZUREML_CONDA_ENVIRONMENT_PATH -f conda_dependencies.yaml -q && \
     rm conda_dependencies.yaml && \
     conda run -p $AZUREML_CONDA_ENVIRONMENT_PATH pip cache purge && \
     conda clean -a -y   
+    
+RUN pip install pipdeptree
+
 USER dockeruser
+
 
 CMD [ "runsvdir", "/var/runit" ]

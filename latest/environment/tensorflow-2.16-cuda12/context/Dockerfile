@@ -37,14 +37,89 @@ RUN apt-get update && \
     dh-make \
     # Vulnerability fixes
     libgnutls30 \
-    libc-bin \
     libgssapi-krb5-2 \
     libpam-cap \
     libtasn1-6 \
     libk5crypto3 \
-    libcap2 && \
+    libcap2  \
+    gpgconf \
+    # Perl vulnerability fixes
+    perl-modules-5.34 \
+    perl \
+    perl-base \
+    libperl5.34 && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/* 
+
+RUN apt-get update && \
+    apt-get install -y --only-upgrade \
+        libpython3.10-stdlib \
+        python3.10 \
+        libpython3.10-minimal \
+        python3.10-minimal \
+        libsqlite3-0 \
+        libc6 \
+        libc6-dev \
+        libc-bin \
+        libc-dev-bin \
+        dotnet-hostfxr-8.0 \
+        dotnet-host-8.0 \
+        dotnet-runtime-8.0 \
+        dpkg \
+        dpkg-dev \
+        libbinutils \
+        binutils \
+        binutils-common \
+        binutils-multiarch \
+        binutils-x86-64-linux-gnu \
+        libctf0 \
+        libctf-nobfd0 \
+        libdpkg-perl \
+        libssh-4 \
+        libxml2 \
+        linux-libc-dev \
+        linux-headers-generic \
+        locales \
+        openssl \
+        gnupg2 \
+        systemd \
+        systemd-sysv \
+        systemd-timesyncd \
+        libsystemd0 \
+        libnss-systemd \
+        libudev1 \
+        udev \
+        libpam-systemd \
+        libpam0g \
+        libpam-modules-bin \
+        libpam-modules \
+        libpam-runtime \
+        libpython3.10-stdlib \
+        python3.10 \
+        libpython3.10-minimal \
+        python3.10-minimal \
+        libarchive13 \
+        # Vulnerabiltiy fixes
+        cpp-11 \
+        libtsan0 \
+        libstdc++-11-dev \
+        gcc-11 \
+        libgcc-11-dev \
+        g++-11 \
+        libasan6 \
+        gcc-11-base \
+        libquadmath0 \
+        libstdc++6 \
+        libatomic1 \
+        liblsan0 \
+        libubsan1 \
+        libcc1-0 \
+        libgcc-s1 \
+        libgomp1 \
+        gcc-12-base \
+        libitm1 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
                
 # Update to latest redis       
 RUN apt-get update && apt-get install -y lsb-release && \
@@ -101,8 +176,7 @@ RUN mkdir /tmp/ucx && \
 
 # Open-MPI installation
 ENV OPENMPI_VERSION 4.1.0
-RUN mkdir /tmp/openmpi && \
-    cd /tmp/openmpi && \
+RUN mkdir /tmp/openmpi && cd /tmp/openmpi && \
     wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-${OPENMPI_VERSION}.tar.gz && \
     tar zxf openmpi-${OPENMPI_VERSION}.tar.gz && \
     cd openmpi-${OPENMPI_VERSION} && \
@@ -125,6 +199,10 @@ RUN apt-get update && \
 # rdma-core
 RUN apt-get update && \
     apt-get install -y --no-install-recommends rdma-core && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# remove unused packages
+RUN apt-get autoremove -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 #Install latest version of nccl-rdma-sharp-plugins
@@ -162,10 +240,13 @@ RUN conda env create -p $CONDA_PREFIX -f conda_dependencies.yaml -q && \
 
 RUN conda run -p $CONDA_PREFIX
 
-RUN HOROVOD_WITH_TENSORFLOW=1 pip install horovod[tensorflow]
+RUN HOROVOD_WITH_TENSORFLOW=1  HOROVOD_CUDA_HOME=/usr/local/cuda pip  install --no-cache-dir --no-build-isolation horovod["tensorflow"]==0.28.1
 
 # Reinstall OpenSSL inside Conda
 RUN conda run -p $CONDA_PREFIX conda install -c conda-forge openssl=3.0.2
+
+# Security vulnerability fixes
+RUN conda run -p $CONDA_PREFIX pip install --upgrade urllib3==2.6.3 aiohttp==3.13.3 PyNaCl==1.6.2
 
 # This is needed for mpi to locate libpython
 ENV LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH

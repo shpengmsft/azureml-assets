@@ -1,0 +1,212 @@
+$schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
+
+name: hibou-l
+path: ./
+
+properties:
+  inference-min-sku-spec: 4|1|28|64
+  inference-recommended-sku: Standard_NC4as_T4_v3, Standard_NC8as_T4_v3, 
+    Standard_NC16as_T4_v3, Standard_NC64as_T4_v3, Standard_NC6s_v3, 
+    Standard_NC12s_v3, Standard_NC24s_v3, Standard_NC24ads_A100_v4, 
+    Standard_NC48ads_A100_v4, Standard_NC96ads_A100_v4, Standard_ND96asr_v4, 
+    Standard_ND96amsr_A100_v4, Standard_ND40rs_v2, Standard_NC40ads_H100_v5, 
+    Standard_NC80adis_H100_v5, Standard_ND96isr_H100_v5
+  languages: en
+  SharedComputeCapacityEnabled: true
+
+tags:
+  task: embeddings
+  industry: health-and-life-sciences
+  Preview: ""
+  licenseDescription: "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/
+    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"\
+    License\" shall mean the terms and conditions for use, reproduction, and distribution
+    as defined by Sections 1 through 9 of this document. \"Licensor\" shall mean the
+    copyright owner or entity authorized by the copyright owner that is granting the
+    License. \"Legal Entity\" shall mean the union of the acting entity and all other
+    entities that control, are controlled by, or are under common control with that
+    entity; \"control\" means (i) the power, direct or indirect, to cause the direction
+    or management of such entity, whether by contract or otherwise, or (ii) ownership
+    of fifty percent (50%) or more of outstanding shares, or (iii) beneficial ownership.
+    \"You\" or \"Your\" means an individual or Legal Entity exercising permissions
+    granted by this License. \"Source\" form means the preferred form for making modifications,
+    including software source code, documentation source, and configuration files.
+    \"Object\" form means any form resulting from mechanical transformation or translation
+    of a Source form, including compiled object code, generated documentation, and
+    conversions to other media types. \"Work\" means the work of authorship, whether
+    in Source or Object form, made available under the License. \"Derivative Works\"\
+    \ means any work based on or derived from the Work with modifications representing
+    an original authorship; excluding works that remain separable or merely link to
+    the Work. \"Contribution\" means any work submitted to Licensor for inclusion
+    in the Work. \"Contributor\" means Licensor and any entity whose Contribution
+    is included in the Work. 2. Grant of Copyright License: each Contributor grants
+    You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+    copyright license to reproduce, prepare Derivative Works of, publicly display,
+    publicly perform, sublicense, and distribute the Work in Source or Object form.
+    3. Grant of Patent License: each Contributor grants You a perpetual, worldwide,
+    non-exclusive, no-charge, royalty-free, irrevocable (except as stated) patent
+    license to make, use, sell, import, and otherwise transfer the Work. This license
+    applies only to patent claims necessarily infringed by the Contribution. If You
+    initiate patent litigation alleging infringement by the Work, Your patent licenses
+    terminate. 4. Redistribution: You may distribute the Work or Derivative Works
+    if You (a) provide a copy of this License, (b) state changes made, (c) retain
+    copyright/patent/trademark/attribution notices, and (d) include NOTICE file contents
+    if applicable. You may add Your own attribution notices. 5. Submission of Contributions:
+    unless stated otherwise, Contributions submitted are under this License. 6. Trademarks:
+    this License does not grant rights to use Licensor’s trademarks. 7. Disclaimer
+    of Warranty: the Work is provided \"AS IS\", without warranties or conditions,
+    express or implied, including title, non-infringement, merchantability, or fitness
+    for a purpose. 8. Limitation of Liability: Contributors are not liable for damages
+    arising from this License or use of the Work. 9. Accepting Warranty or Additional
+    Liability: You may offer support/warranty/indemnity for a fee, but only on Your
+    own behalf and must indemnify Contributors. END OF TERMS AND CONDITIONS APPENDIX:
+    How to apply the Apache License to your work: include the following notice. Copyright
+    [yyyy] [name of copyright owner]. Licensed under the Apache License, Version 2.0
+    (the \"License\"); you may not use this file except in compliance with the License.
+    You may obtain a copy at http://www.apache.org/licenses/LICENSE-2.0. Unless required
+    by law or agreed to in writing, software distributed under the License is provided
+    on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or
+    implied. See the License for the specific language governing permissions and limitations
+    under the License."
+  inference_supported_envs:
+  - hf
+  license: apache-2.0
+  author: HistAI
+  hiddenlayerscanned: ""
+  SharedComputeCapacityEnabled: ""
+  inference_compute_allow_list: [Standard_NC4as_T4_v3, Standard_NC8as_T4_v3, 
+      Standard_NC16as_T4_v3, Standard_NC64as_T4_v3, Standard_NC6s_v3, 
+      Standard_NC12s_v3, Standard_NC24s_v3, Standard_NC24ads_A100_v4, 
+      Standard_NC48ads_A100_v4, Standard_NC96ads_A100_v4, Standard_ND96asr_v4, 
+      Standard_ND96amsr_A100_v4, Standard_ND40rs_v2, Standard_NC40ads_H100_v5, 
+      Standard_NC80adis_H100_v5, Standard_ND96isr_H100_v5]
+version: 2
+description: |-
+  Hibou-L is a foundational vision transformer developed for digital pathology, designed to generate high-quality feature representations from histology image patches. These representations can be leveraged for a range of downstream tasks, including classification, segmentation, and detection.
+
+  Built on the ViT-B/14 architecture, Hibou-L is a digital pathology foundation model pretrained on a 1.2B image private dataset using the DINOv2 framework. The model processes 224 × 224 input patches and generates high-quality feature representations for downstream histopathological tasks.
+
+  ### Evaluation Results
+  To understand the capabilities of Hibou-L, we evaluated it across a range of public digital pathology benchmarks. The model was tested at both patch-level and slide-level granularity to assess its generalization and diagnostic utility across different cancer types and tissue modalities.
+
+  | Category | Benchmark | Hibou-L |
+  |--|--|--|
+  | Patch-level | CRC-100K | 96.6 |
+  |  | PCAM | 95.3 |
+  |  | MHIST | 85.8 |
+  |  | MSI-CRC | 79.3 |
+  |  | MSI-STAD | 82.9 |
+  |  | TIL-DET | 94.2 |
+  | Slide-level | BRCA | 94.6 |
+  |  | NSCLC | 96.9 |
+  |  | RCC | 99.6 |
+
+  ### Sample inputs and outputs (for real time inference)
+
+  **Single PDB Input:**
+  ```bash
+  data = {
+    "input_data": {
+      "columns": ["image"],
+      "data": [
+        ["base64_encoded_image_string"]
+      ]
+    }
+  }
+  ```
+
+  **Multiple PDB Input:**
+  ```bash
+  data = {
+    "input_data": {
+      "columns": ["image"], 
+      "data": [
+        ["base64_encoded_image_string_1"],
+        ["base64_encoded_image_string_2"]
+      ]
+    }
+  }
+  ```
+
+  **Output Sample:**
+  ```json
+  [
+    {
+      "image_features": [2.6749861240386963, -0.7507642507553101, 0.2108164280653, ...]
+    }
+  ]
+  ```
+
+  **Output Processing Example:**
+  ```python
+  def process_hibou_predictions(result):
+      """Process Hibou-L embedding predictions."""
+      if not result:
+          print("No predictions found")
+          return
+
+      # Handle the response format: [{'image_features': [embedding_list]}]
+      if isinstance(result, list) and len(result) > 0:
+          first_result = result[0]
+          if isinstance(first_result, dict) and 'image_features' in first_result:
+              embeddings = first_result['image_features']
+              embedding_dim = len(embeddings)
+              print(f"Received embeddings with dimension: {embedding_dim}")
+              
+              # Calculate statistics
+              embedding_array = np.array(embeddings)
+              print(f"Embedding statistics:")
+              print(f"  - Mean: {np.mean(embedding_array):.4f}")
+              print(f"  - Std: {np.std(embedding_array):.4f}")
+              print(f"  - Min: {np.min(embedding_array):.4f}")
+              print(f"  - Max: {np.max(embedding_array):.4f}")
+              
+              return embeddings
+          else:
+              print(f"Unexpected result format - missing 'image_features' key")
+              print(f"Available keys: {list(first_result.keys()) if isinstance(first_result, dict) else 'Not a dict'}")
+      else:
+          print(f"Unexpected result format: {type(result)}")
+      
+      return None
+
+  def visualize_embeddings_results(original_image, embeddings, save_path=None):
+      """Visualize the embedding results with distribution plot."""
+      plt.figure(figsize=(15, 6))
+      
+      plt.subplot(1, 3, 1)
+      plt.imshow(original_image)
+      plt.title('Original Image')
+      plt.axis('off')
+      
+      plt.subplot(1, 3, 2)
+      plt.imshow(original_image)
+      embedding_dim = len(embeddings) if embeddings else 0
+      plt.title(f'Processed - Embedding dim: {embedding_dim}')
+      plt.axis('off')
+      
+      # Show embedding distribution
+      plt.subplot(1, 3, 3)
+      if embeddings:
+          embedding_array = np.array(embeddings)
+          plt.hist(embedding_array, bins=50, alpha=0.7, color='blue')
+          plt.title(f'Embedding Distribution\nMean: {np.mean(embedding_array):.3f}\nStd: {np.std(embedding_array):.3f}')
+          plt.xlabel('Embedding Value')
+          plt.ylabel('Frequency')
+      else:
+          plt.text(0.5, 0.5, 'No embeddings', ha='center', va='center')
+          plt.axis('off')
+      
+      plt.tight_layout()
+      if save_path:
+          plt.savefig(save_path, bbox_inches='tight', dpi=300)
+      plt.show()
+  ```
+
+  ## Data and Resource Specification for Deployment
+  * **Supported Data Input Format** 
+  1. **Input Format**: The model accepts histopathology images in png. Images can be provided as base64-encoded image strings.
+
+  2. **Output Format**: The model generates dense embedding vectors representing the visual features of histopathology image in 768-dimensional feature vectors.
+
+  3. **Data Sources and Technical Details**: For comprehensive information about training datasets, model architecture, and validation results, refer to the [official hibou repository](https://github.com/HistAI/hibou/tree/main)
