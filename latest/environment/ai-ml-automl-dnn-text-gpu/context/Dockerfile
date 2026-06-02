@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2204-cu126-py310-torch280:biweekly.202605.2
+FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2204-cu126-py310-torch280:biweekly.202606.1
 
 ENV AZUREML_CONDA_ENVIRONMENT_PATH=/azureml-envs/azureml-automl-dnn-text-gpu
 # Prepend path to AzureML conda environment
@@ -104,7 +104,7 @@ RUN pip install --no-cache-dir \
                 azureml-core==1.61.0.post3 \
                 azureml-mlflow==1.62.0.post2 \
                 azureml-automl-core==1.62.0.post3 \
-                azureml-automl-runtime==1.62.0 \
+                azureml-automl-runtime==1.62.0.post1 \
                 azureml-defaults==1.62.0 \
                 'azure-identity>=1.25.1' \
                 'sentencepiece==0.2.1' \

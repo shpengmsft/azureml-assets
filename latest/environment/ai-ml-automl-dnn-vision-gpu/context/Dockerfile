@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2204-cu126-py310-torch280:biweekly.202605.2
+FROM mcr.microsoft.com/aifx/acpt/stable-ubuntu2204-cu126-py310-torch280:biweekly.202606.1
 
 ENV AZUREML_CONDA_ENVIRONMENT_PATH=/azureml-envs/azureml-automl-dnn-vision-gpu
 # Prepend path to AzureML conda environment
@@ -107,7 +107,7 @@ RUN pip install --no-cache-dir \
                 azureml-telemetry==1.62.0 \
                 azureml-responsibleai==1.62.0 \
                 azureml-automl-core==1.62.0.post3 \
-                azureml-automl-runtime==1.62.0 \
+                azureml-automl-runtime==1.62.0.post1 \
                 azureml-defaults==1.62.0 \
                 azureml-interpret==1.62.0 \
                 'azureml-dataprep>=2.24.4' \
