@@ -24,7 +24,7 @@ dependencies:
   - azureml-metrics[all]==0.0.91
   - xgboost>=1.6.1,<2.0.0
   - statsmodels>=0.11.0,<0.14.1
-  - lightgbm==4.6.0
+  - lightgbm==4.7.0
   - msrest>=0.6.21,<0.7.1
   - mltable==1.6.3
   - openai<2.0.0
