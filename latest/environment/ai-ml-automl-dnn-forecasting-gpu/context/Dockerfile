@@ -73,7 +73,7 @@ RUN pip install --no-cache-dir \
                 azureml-responsibleai==1.62.0 \
                 azureml-automl-core==1.62.0.post3 \
                 azureml-automl-runtime==1.62.0.post1 \
-                azureml-dataset-runtime==1.62.0 \
+                azureml-dataset-runtime==1.62.0.post1 \
                 'azure-identity>=1.25.1' \
                 'inference-schema' \
                 'mlflow-skinny==2.15.1' \
