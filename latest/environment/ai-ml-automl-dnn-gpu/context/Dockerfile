@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi5.0-cuda12.4-ubuntu22.04:20260810.v1
+FROM mcr.microsoft.com/azureml/openmpi5.0-cuda12.4-ubuntu22.04:20260901.v1
 
 USER root
 
@@ -91,7 +91,7 @@ RUN pip install \
                 azureml-train-automl-client==1.62.0 \
                 azureml-train-automl-runtime==1.62.0 \
                 azureml-dataset-runtime==1.62.0.post1 \
-                azureml-mlflow==1.62.0.post5 \
+                azureml-mlflow==1.62.0.post6 \
                 'azureml-model-management-sdk==1.0.1b6.post1' \
                 'mlflow-skinny==2.15.1' \
                 'azure-identity>=1.25.1' --no-cache-dir

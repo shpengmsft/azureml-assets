@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azureml/openmpi5.0-cuda12.4-ubuntu22.04:20260810.v1
+FROM mcr.microsoft.com/azureml/openmpi5.0-cuda12.4-ubuntu22.04:20260901.v1
 
 ENV AZUREML_CONDA_ENVIRONMENT_PATH=/azureml-envs/azureml-automl-dnn-forecasting-gpu
 # Prepend path to AzureML conda environment
@@ -66,7 +66,7 @@ RUN conda create -p $AZUREML_CONDA_ENVIRONMENT_PATH \
 RUN pip install --no-cache-dir \
                 # begin pypi dependencies
                 azureml-core==1.61.0.post4 \
-                azureml-mlflow==1.62.0.post5 \
+                azureml-mlflow==1.62.0.post6 \
                 azureml-defaults==1.62.0 \
                 azureml-telemetry==1.62.0 \
                 azureml-interpret==1.62.0 \
