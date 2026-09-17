@@ -120,7 +120,7 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
                 azureml-train-automl-client==1.62.0 \
                 azureml-train-automl-runtime==1.62.0 \
-                azureml-automl-dnn-vision==1.62.0
+                azureml-automl-dnn-vision==1.62.0.post1
                 
 # Update cryptography and pyarow for fixing vulnerability. Doing it  separately from pip install to avoid conflict with other packages
 RUN pip install cryptography>=45.0.7 \
