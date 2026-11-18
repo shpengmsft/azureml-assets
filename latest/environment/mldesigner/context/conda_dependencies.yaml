@@ -7,5 +7,5 @@ dependencies:
 - setuptools<82
 - pip:
   - azure-ai-ml==1.35.2
-  - azureml-mlflow==1.62.0.post6
+  - azureml-mlflow==1.62.0.post7
   - mldesigner==0.1.0b23
